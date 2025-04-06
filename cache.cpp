@@ -24,3 +24,9 @@ std::vector<uint8_t> Cache::read(uint32_t addr) const {
 
     return {}; // Miss
 }
+
+void Cache::invalidateLine(int line) {
+    if (line >= 0 && line < CACHE_LINES) {
+        lines[line].valid = false;
+    }
+}

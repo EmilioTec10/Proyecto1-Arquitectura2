@@ -25,7 +25,7 @@ struct Message {
     MessageType type;
     int SRC;
     int DEST;
-    int ADDR;
+    uint32_t ADDR;
     int SIZE;
     int CACHE_LINE;
     uint32_t DATA;

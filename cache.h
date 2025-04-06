@@ -20,6 +20,7 @@ public:
 
     void write(uint32_t addr, const std::vector<uint8_t>& data);
     std::vector<uint8_t> read(uint32_t addr) const;
+    void invalidateLine(int line);
 
 private:
     std::array<CacheLine, CACHE_LINES> lines;

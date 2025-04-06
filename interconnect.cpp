@@ -143,6 +143,19 @@ void Interconnect::handleMessage(const Message& msg) {
             break;
         }
 
+        case MessageType::BROADCAST_INVALIDATE: {
+            std::cout << "[IC] BROADCAST_INVALIDATE from PE" << msg.SRC
+                      << ", line " << msg.CACHE_LINE << "\n";
+        
+            for (const auto& [id, pe_ptr] : pe_map) {
+                if (id != msg.SRC) {
+                    pe_ptr->invalidateCacheLine(msg.CACHE_LINE);
+                }
+            }
+        
+            break;
+        }
+
         default:
             std::cout << "[IC] Mensaje tipo no implementado aún.\n";
             break;
