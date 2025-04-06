@@ -23,6 +23,7 @@ int main() {
     // Crear PE
     PE pe0(0, &ic);
     ic.registerPE(0, &pe0); // Para que pueda recibir READ_RESP
+    pe0.run();
 
     // Enviar READ_MEM
     Message readMsg = {

@@ -54,17 +54,35 @@ void Interconnect::handleMessage(const Message& msg) {
         case MessageType::WRITE_MEM: {
             std::cout << "[IC] WRITE_MEM from PE" << msg.SRC
                       << " at address " << msg.ADDR << "\n";
+            
+            uint32_t status = 0x0;
 
             if (memory) {
                 try {
                     memory->write(msg.ADDR, msg.DATA);
                     std::cout << " -> Datos escritos: 0x" << std::hex << msg.DATA << std::dec << "\n";
+                    status = 0x1; // Indica éxito
                 } catch (const std::out_of_range& e) {
                     std::cerr << " -> Error: " << e.what() << "\n";
                 }
             } else {
                 std::cerr << " -> Memoria no conectada.\n";
             }
+            // Enviar WRITE_RESP al PE origen
+            Message response = {
+                MessageType::WRITE_RESP,
+                -1,            // SRC no aplica
+                msg.SRC,       // DEST: PE que hizo la solicitud
+                msg.ADDR,
+                0,             // SIZE
+                0,
+                status,        // STATUS como DATA (1 byte)
+                0, 0,
+                msg.QoS
+            };
+
+            enqueueMessage(response);
+
             break;
         }
 
@@ -109,6 +127,19 @@ void Interconnect::handleMessage(const Message& msg) {
                 std::cerr << " -> PE " << msg.DEST << " no registrado.\n";
             }
 
+            break;
+        }
+
+        case MessageType::WRITE_RESP: {
+            std::cout << "[IC] WRITE_RESP to PE" << msg.DEST
+                      << " with status: 0x" << std::hex << msg.DATA << std::dec << "\n";
+        
+            if (pe_map.find(msg.DEST) != pe_map.end()) {
+                pe_map[msg.DEST]->receiveMessage(msg);
+            } else {
+                std::cerr << " -> PE " << msg.DEST << " no registrado.\n";
+            }
+        
             break;
         }
 

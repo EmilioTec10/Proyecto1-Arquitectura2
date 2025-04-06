@@ -2,7 +2,6 @@
 #include "interconnect.h"
 #include <iostream>
 
-// Aquí implementás run() y receiveMessage()
 
 PE::PE(uint8_t id, Interconnect* ic) : pe_id(id), interconnect(ic) {}
 
@@ -39,5 +38,13 @@ void PE::receiveMessage(const Message& msg) {
         }
 
         std::cout << "[PE " << int(pe_id) << "] No hay bloques libres en cache\n";
+    }
+
+    else if (msg.type == MessageType::WRITE_RESP) {
+        if (msg.DATA == 0x1) {
+            std::cout << "[PE " << int(pe_id) << "] WRITE_RESP recibido: escritura OK\n";
+        } else {
+            std::cout << "[PE " << int(pe_id) << "] WRITE_RESP recibido: escritura FALLÓ\n";
+        }
     }
 }
