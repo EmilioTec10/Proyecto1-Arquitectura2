@@ -7,21 +7,25 @@
 
 
 int main() {
-    // Crear el Interconnect con política FIFO (false) o QoS (true)
-    Interconnect ic(true); // usamos QoS para ver que funcione
+    // Instancia del sistema
+    Memory mem;
+    Interconnect ic(true); // true = QoS
+    ic.attachMemory(&mem);
 
-    // Lanzar el hilo de procesamiento de mensajes
+    // Arrancar hilo de procesamiento
     std::thread ic_thread(&Interconnect::processMessages, &ic);
 
-    // Crear 1 PE (podés crear los 8 luego)
+    // Crear un PE que envía un mensaje
     PE pe0(0, &ic);
-
-    // Ejecutar el PE (esto manda un mensaje WRITE_MEM al Interconnect)
     pe0.run();
 
-    // Esperamos un poco para ver el resultado del mensaje
+    // Esperamos un poco para asegurarnos que el mensaje se procese
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Como no tenemos forma de detener el hilo, detenemos el programa aquí a la fuerza
+    // Verificamos lectura directa desde main
+    uint32_t val = mem.read(64);
+    std::cout << "[MAIN] Valor leído en addr 64: 0x" << std::hex << val << std::dec << "\n";
+
+    // Finalizar programa (en producción usarías una bandera para parar el hilo)
     std::exit(0);
 }

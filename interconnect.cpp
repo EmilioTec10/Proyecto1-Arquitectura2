@@ -6,6 +6,7 @@
 #include <map>
 #include <cstdint>
 #include <atomic>
+#include "memory.cpp" // Clase de la memoria principal
 
 enum class MessageType {
     WRITE_MEM,
@@ -40,8 +41,12 @@ struct QoSComparator {
 
 class Interconnect {
     public:
-        Interconnect(bool useQoS = false) : useQoS(useQoS) {}
-    
+        Interconnect(bool useQoS = false) : useQoS(useQoS), memory(nullptr) {}
+
+        void attachMemory(Memory* mem) {
+            memory = mem;
+        }
+
         void enqueueMessage(const Message& msg) {
             std::lock_guard<std::mutex> lock(queue_mutex);
             if (useQoS) {
@@ -66,6 +71,7 @@ class Interconnect {
         std::mutex queue_mutex;
         std::condition_variable queue_cv;
         bool useQoS;
+        Memory* memory; // Puntero a la memoria principal
     
         Message getNextMessage() {
             std::unique_lock<std::mutex> lock(queue_mutex);
@@ -88,6 +94,16 @@ class Interconnect {
             switch (msg.type) {
                 case MessageType::WRITE_MEM:
                     std::cout << "[IC] WRITE_MEM from PE" << msg.SRC << " at address " << msg.ADDR << "\n";
+                    if (memory) {
+                        try {
+                            memory->write(msg.ADDR, msg.DATA);
+                            std::cout << " -> Datos escritos en memoria: 0x" << std::hex << msg.DATA << std::dec << "\n";
+                        } catch (const std::out_of_range& e) {
+                            std::cerr << " -> Error de escritura: " << e.what() << "\n";
+                        }
+                    } else {
+                        std::cerr << " -> Memoria no conectada al Interconnect.\n";
+                    }
                     break;
     
                 case MessageType::READ_MEM:
