@@ -2,30 +2,41 @@
 #include <iostream>
 #include <vector>
 #include <thread>
-#include "PEs.cpp" 
+#include "PEs.cpp"
+#include "interconnect.cpp"
+#include "memory.cpp"
+#include "cache.cpp" 
 
 
 
 int main() {
-    // Instancia del sistema
     Memory mem;
-    Interconnect ic(true); // true = QoS
+    Interconnect ic(true);
     ic.attachMemory(&mem);
 
-    // Arrancar hilo de procesamiento
+    // Pre-cargar la memoria para que haya algo que leer
+    mem.write(128, 0xCAFEBABE);
+
+    // Arrancamos el hilo del Interconnect
     std::thread ic_thread(&Interconnect::processMessages, &ic);
 
-    // Crear un PE que envía un mensaje
+    // Crear PE
     PE pe0(0, &ic);
-    pe0.run();
+    ic.registerPE(0, &pe0); // Para que pueda recibir READ_RESP
 
-    // Esperamos un poco para asegurarnos que el mensaje se procese
+    // Enviar READ_MEM
+    Message readMsg = {
+        MessageType::READ_MEM,
+        0, -1,            // SRC, DEST
+        128,              // ADDR
+        4,                // SIZE
+        0, 0, 0, 0,
+        0x20              // QoS
+    };
+
+    ic.enqueueMessage(readMsg);
+
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
-    // Verificamos lectura directa desde main
-    uint32_t val = mem.read(64);
-    std::cout << "[MAIN] Valor leído en addr 64: 0x" << std::hex << val << std::dec << "\n";
-
-    // Finalizar programa (en producción usarías una bandera para parar el hilo)
     std::exit(0);
 }

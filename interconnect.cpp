@@ -1,134 +1,119 @@
+#include "interconnect.h"
+#include "memory.h"
+#include "PEs.h"
 #include <iostream>
-#include <queue>
-#include <vector>
-#include <mutex>
-#include <condition_variable>
-#include <map>
-#include <cstdint>
-#include <atomic>
-#include "memory.cpp" // Clase de la memoria principal
 
-enum class MessageType {
-    WRITE_MEM,
-    READ_MEM,
-    BROADCAST_INVALIDATE,
-    INV_ACK,
-    INV_COMPLETE,
-    READ_RESP,
-    WRITE_RESP
-};
+Interconnect::Interconnect(bool useQoS) : useQoS(useQoS), memory(nullptr) {}
 
-struct Message {
-    MessageType type;
-    int SRC;
-    int DEST;
-    int ADDR;
-    int SIZE;
-    int CACHE_LINE;
-    uint32_t DATA;
-    int NUM_OF_CACHE_LINES;
-    int START_CACHE_LINE;
-    int QoS;
-};
-
-struct QoSComparator {
-    bool operator()(const std::pair<int, Message>& a, const std::pair<int, Message>& b) {
-        // Queremos que mayor prioridad (mayor valor) vaya primero
-        return a.first < b.first;
+void Interconnect::enqueueMessage(const Message& msg) {
+    std::lock_guard<std::mutex> lock(queue_mutex);
+    if (useQoS) {
+        qos_queue.emplace(msg.QoS, msg);
+    } else {
+        fifo_queue.push(msg);
     }
-};
+    queue_cv.notify_one();
+}
 
+Message Interconnect::getNextMessage() {
+    std::unique_lock<std::mutex> lock(queue_mutex);
 
-class Interconnect {
-    public:
-        Interconnect(bool useQoS = false) : useQoS(useQoS), memory(nullptr) {}
+    // Esperar hasta que haya al menos un mensaje disponible
+    queue_cv.wait(lock, [this]() {
+        return !fifo_queue.empty() || !qos_queue.empty();
+    });
 
-        void attachMemory(Memory* mem) {
-            memory = mem;
-        }
+    if (useQoS && !qos_queue.empty()) {
+        auto top = qos_queue.top();
+        qos_queue.pop();
+        return top.second;
+    } else {
+        Message msg = fifo_queue.front();
+        fifo_queue.pop();
+        return msg;
+    }
+}
 
-        void enqueueMessage(const Message& msg) {
-            std::lock_guard<std::mutex> lock(queue_mutex);
-            if (useQoS) {
-                qos_queue.emplace(msg.QoS, msg);
+void Interconnect::processMessages() {
+    while (true) {
+        Message msg = getNextMessage();
+        handleMessage(msg);
+    }
+}
+
+void Interconnect::attachMemory(Memory* mem) {
+    memory = mem;
+}
+
+void Interconnect::registerPE(int id, PE* pe) {
+    pe_map[id] = pe;
+}
+
+void Interconnect::handleMessage(const Message& msg) {
+    switch (msg.type) {
+        case MessageType::WRITE_MEM: {
+            std::cout << "[IC] WRITE_MEM from PE" << msg.SRC
+                      << " at address " << msg.ADDR << "\n";
+
+            if (memory) {
+                try {
+                    memory->write(msg.ADDR, msg.DATA);
+                    std::cout << " -> Datos escritos: 0x" << std::hex << msg.DATA << std::dec << "\n";
+                } catch (const std::out_of_range& e) {
+                    std::cerr << " -> Error: " << e.what() << "\n";
+                }
             } else {
-                fifo_queue.push(msg);
+                std::cerr << " -> Memoria no conectada.\n";
             }
-            queue_cv.notify_one();
+            break;
         }
-    
-        // Debe llamarse en un hilo que esté constantemente procesando mensajes
-        void processMessages() {
-            while (true) {
-                Message msg = getNextMessage();
-                handleMessage(msg);
+
+        case MessageType::READ_MEM: {
+            std::cout << "[IC] READ_MEM from PE" << msg.SRC
+                      << " at address " << msg.ADDR
+                      << ", size = " << msg.SIZE << "\n";
+
+            if (!memory) {
+                std::cerr << " -> Memoria no conectada.\n";
+                break;
             }
+
+            try {
+                uint32_t result = memory->read(msg.ADDR);
+                Message response = {
+                    MessageType::READ_RESP,
+                    -1,             // SRC no aplica
+                    msg.SRC,        // DEST: PE que pidió
+                    msg.ADDR,
+                    msg.SIZE,
+                    0,
+                    result,
+                    0, 0,
+                    msg.QoS
+                };
+                enqueueMessage(response);
+            } catch (const std::out_of_range& e) {
+                std::cerr << " -> Error: " << e.what() << "\n";
+            }
+
+            break;
         }
-    
-    private:
-        std::queue<Message> fifo_queue;
-        std::priority_queue<std::pair<int, Message>, std::vector<std::pair<int, Message>>, QoSComparator> qos_queue;
-        std::mutex queue_mutex;
-        std::condition_variable queue_cv;
-        bool useQoS;
-        Memory* memory; // Puntero a la memoria principal
-    
-        Message getNextMessage() {
-            std::unique_lock<std::mutex> lock(queue_mutex);
-            queue_cv.wait(lock, [this]() {
-                return !fifo_queue.empty() || !qos_queue.empty();
-            });
-    
-            if (useQoS && !qos_queue.empty()) {
-                auto top = qos_queue.top();
-                qos_queue.pop();
-                return top.second;
+
+        case MessageType::READ_RESP: {
+            std::cout << "[IC] READ_RESP to PE" << msg.DEST
+                      << " with data: 0x" << std::hex << msg.DATA << std::dec << "\n";
+
+            if (pe_map.find(msg.DEST) != pe_map.end()) {
+                pe_map[msg.DEST]->receiveMessage(msg);
             } else {
-                Message msg = fifo_queue.front();
-                fifo_queue.pop();
-                return msg;
+                std::cerr << " -> PE " << msg.DEST << " no registrado.\n";
             }
+
+            break;
         }
-    
-        void handleMessage(const Message& msg) {
-            switch (msg.type) {
-                case MessageType::WRITE_MEM:
-                    std::cout << "[IC] WRITE_MEM from PE" << msg.SRC << " at address " << msg.ADDR << "\n";
-                    if (memory) {
-                        try {
-                            memory->write(msg.ADDR, msg.DATA);
-                            std::cout << " -> Datos escritos en memoria: 0x" << std::hex << msg.DATA << std::dec << "\n";
-                        } catch (const std::out_of_range& e) {
-                            std::cerr << " -> Error de escritura: " << e.what() << "\n";
-                        }
-                    } else {
-                        std::cerr << " -> Memoria no conectada al Interconnect.\n";
-                    }
-                    break;
-    
-                case MessageType::READ_MEM:
-                    std::cout << "[IC] READ_MEM from PE" << msg.SRC << " at address " << msg.ADDR << "\n";
-                    break;
-    
-                case MessageType::BROADCAST_INVALIDATE:
-                    std::cout << "[IC] BROADCAST_INVALIDATE from PE" << msg.SRC << ", line " << msg.CACHE_LINE << "\n";
-                    break;
-    
-                case MessageType::INV_ACK:
-                    std::cout << "[IC] INV_ACK from PE" << msg.SRC << "\n";
-                    break;
-    
-                case MessageType::INV_COMPLETE:
-                    std::cout << "[IC] INV_COMPLETE to PE" << msg.DEST << "\n";
-                    break;
-    
-                case MessageType::READ_RESP:
-                    std::cout << "[IC] READ_RESP to PE" << msg.DEST << "\n";
-                    break;
-    
-                case MessageType::WRITE_RESP:
-                    std::cout << "[IC] WRITE_RESP to PE" << msg.DEST << ", status = " << msg.DATA << "\n";
-                    break;
-            }
-        }
-};
+
+        default:
+            std::cout << "[IC] Mensaje tipo no implementado aún.\n";
+            break;
+    }
+}
