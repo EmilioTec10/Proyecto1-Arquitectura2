@@ -147,14 +147,68 @@ void Interconnect::handleMessage(const Message& msg) {
             std::cout << "[IC] BROADCAST_INVALIDATE from PE" << msg.SRC
                       << ", line " << msg.CACHE_LINE << "\n";
         
+            int inv_id = next_inv_id++;
+            int num_targets = 0;
+        
             for (const auto& [id, pe_ptr] : pe_map) {
                 if (id != msg.SRC) {
                     pe_ptr->invalidateCacheLine(msg.CACHE_LINE);
+                    ++num_targets;
                 }
+            }
+        
+            if (num_targets > 0) {
+                invalidation_map[inv_id] = {
+                    .expected_acks = num_targets,
+                    .received_acks = 0,
+                    .source_pe = msg.SRC,
+                    .qos = msg.QoS
+                };
             }
         
             break;
         }
+
+        case MessageType::INV_ACK: {
+            std::cout << "[IC] INV_ACK recibido de PE" << msg.SRC << "\n";
+
+            for (auto& [id, tracker] : invalidation_map) {
+                tracker.received_acks += 1;
+
+                if (tracker.received_acks >= tracker.expected_acks) {
+                    std::cout << "[IC] Todos los INV_ACK recibidos para INV " << id << "\n";
+
+                    Message complete = {
+                        MessageType::INV_COMPLETE,
+                        -1,
+                        tracker.source_pe, // el PE original del broadcast
+                        0, 0, 0,
+                        0, 0, 0,
+                        tracker.qos
+                    };
+
+                    enqueueMessage(complete);
+                    invalidation_map.erase(id);
+                    break; 
+                }
+            }
+
+            break;
+        }
+
+        case MessageType::INV_COMPLETE: {
+            std::cout << "[IC] INV_COMPLETE to PE" << msg.DEST
+                      << " (QoS: " << msg.QoS << ")\n";
+        
+            if (pe_map.find(msg.DEST) != pe_map.end()) {
+                pe_map[msg.DEST]->receiveMessage(msg);
+            } else {
+                std::cerr << " -> PE " << msg.DEST << " no registrado.\n";
+            }
+        
+            break;
+        }
+        
 
         default:
             std::cout << "[IC] Mensaje tipo no implementado aún.\n";

@@ -103,9 +103,20 @@ void PE::receiveMessage(const Message& msg) {
             std::cout << "[PE " << int(pe_id) << "] WRITE_RESP recibido: escritura FALLÓ\n";
         }
     }
+
+    else if (msg.type == MessageType::INV_COMPLETE) {
+        std::cout << "[PE " << int(pe_id) << "] INV_COMPLETE recibido: todas las invalidaciones completadas\n";
+    }
 }
 
 void PE::invalidateCacheLine(int line) {
     cache.invalidateLine(line);
     std::cout << "[PE " << int(pe_id) << "] Línea " << line << " invalidada\n";
+
+    Message ack = {
+        MessageType::INV_ACK,
+        pe_id, -1, 0, 0, 0,
+        0, 0, 0, 0 
+    };
+    interconnect->enqueueMessage(ack);
 }

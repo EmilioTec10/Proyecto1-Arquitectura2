@@ -7,6 +7,7 @@
 #include <condition_variable>
 #include <unordered_map>
 #include <cstdint>
+#include <map>
 
 class PE;
 class Memory;
@@ -33,6 +34,16 @@ struct Message {
     int START_CACHE_LINE;
     int QoS;
 };
+
+struct InvalidationTracker {
+    int expected_acks = 0;
+    int received_acks = 0;
+    int source_pe = -1; // PE que originó el broadcast
+    int qos = 0;
+};
+
+std::map<int, InvalidationTracker> invalidation_map;
+int next_inv_id = 0;
 
 class Interconnect {
 public:
