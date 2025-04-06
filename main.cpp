@@ -7,21 +7,21 @@
 
 
 int main() {
-    std::vector<std::thread> threads;
-    std::vector<PE> pes;
+    // Crear el Interconnect con política FIFO (false) o QoS (true)
+    Interconnect ic(true); // usamos QoS para ver que funcione
 
-    for (int i = 0; i < NUM_PES; ++i) {
-        pes.emplace_back(i);
-    }
+    // Lanzar el hilo de procesamiento de mensajes
+    std::thread ic_thread(&Interconnect::processMessages, &ic);
 
-    for (int i = 0; i < NUM_PES; ++i) {
-        threads.emplace_back(&PE::run, &pes[i]);
-    }
+    // Crear 1 PE (podés crear los 8 luego)
+    PE pe0(0, &ic);
 
-    for (auto& t : threads) {
-        t.join();
-    }
+    // Ejecutar el PE (esto manda un mensaje WRITE_MEM al Interconnect)
+    pe0.run();
 
-    std::cout << "Simulación completada.\n";
-    return 0;
+    // Esperamos un poco para ver el resultado del mensaje
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+    // Como no tenemos forma de detener el hilo, detenemos el programa aquí a la fuerza
+    std::exit(0);
 }

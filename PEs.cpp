@@ -6,6 +6,7 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include "interconnect.cpp"
 
 
 constexpr int NUM_PES = 8;
@@ -52,25 +53,30 @@ private:
 
 // PE con cache privada e instrucciones
 class PE {
-public:
-    PE(uint8_t id) : pe_id(id) {}
-
-    void run() {
-        std::cout << "[PE " << int(pe_id) << "] Empezando ejecución...\n";
-
-        for (int i = 0; i < 10; ++i) {
-            uint32_t addr = i * 16;
-            std::vector<uint8_t> data(CACHE_LINE_SIZE, pe_id);
-            cache.write(addr, data);
-
-            auto read_data = cache.read(addr);
-            std::cout << "[PE " << int(pe_id) << "] Read data size: " << read_data.size() << "\n";
+    public:
+        PE(uint8_t id, Interconnect* ic) : pe_id(id), interconnect(ic) {}
+    
+        void run() {
+            std::cout << "[PE " << int(pe_id) << "] Ejecutando...\n";
+    
+            Message writeMsg = {
+                MessageType::WRITE_MEM,
+                pe_id,        // SRC
+                -1,           // DEST no aplica
+                64,           // ADDR
+                0,            // SIZE no aplica aquí
+                0,            // CACHE_LINE
+                0xABCD1234,   // DATA de prueba
+                1,            // NUM_OF_CACHE_LINES
+                0,            // START_CACHE_LINE
+                0x10          // QoS
+            };
+    
+            interconnect->enqueueMessage(writeMsg);
         }
-
-        std::cout << "[PE " << int(pe_id) << "] Finalizó ejecución.\n";
-    }
-
-private:
-    uint8_t pe_id;
-    Cache cache;
-};
+    
+    private:
+        uint8_t pe_id;
+        Interconnect* interconnect;
+    };
+    

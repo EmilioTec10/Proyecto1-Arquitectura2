@@ -24,10 +24,17 @@ struct Message {
     int ADDR;
     int SIZE;
     int CACHE_LINE;
-    int DATA;
+    uint32_t DATA;
     int NUM_OF_CACHE_LINES;
     int START_CACHE_LINE;
     int QoS;
+};
+
+struct QoSComparator {
+    bool operator()(const std::pair<int, Message>& a, const std::pair<int, Message>& b) {
+        // Queremos que mayor prioridad (mayor valor) vaya primero
+        return a.first < b.first;
+    }
 };
 
 
@@ -55,7 +62,7 @@ class Interconnect {
     
     private:
         std::queue<Message> fifo_queue;
-        std::priority_queue<std::pair<int, Message>> qos_queue; // mayor prioridad sale primero
+        std::priority_queue<std::pair<int, Message>, std::vector<std::pair<int, Message>>, QoSComparator> qos_queue;
         std::mutex queue_mutex;
         std::condition_variable queue_cv;
         bool useQoS;
