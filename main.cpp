@@ -7,9 +7,6 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
-#include <queue>
-#include <condition_variable>
-#include <map>
 
 constexpr int NUM_PES = 8;
 constexpr int CACHE_LINES = 128;
@@ -30,6 +27,7 @@ public:
         lines.fill(CacheLine{});
     }
 
+    // Escritura de datos en la cache
     void write(uint32_t addr, const std::vector<uint8_t>& data) {
         int index = (addr / CACHE_LINE_SIZE) % CACHE_LINES;
         lines[index].valid = true;
@@ -39,6 +37,7 @@ public:
         }
     }
 
+    // Lectura de datos de la cache
     std::vector<uint8_t> read(uint32_t addr) {
         int index = (addr / CACHE_LINE_SIZE) % CACHE_LINES;
         if (lines[index].valid && lines[index].tag == addr / CACHE_LINE_SIZE) {
