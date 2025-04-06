@@ -2,6 +2,8 @@
 #include <iostream>
 #include <vector>
 #include <thread>
+#include <memory> // para std::unique_ptr
+#include <sstream> // para construir nombres de archivo
 #include "PEs.cpp"
 #include "interconnect.cpp"
 #include "memory.cpp"
@@ -9,37 +11,40 @@
 
 
 
+
 int main() {
+    constexpr int NUM_PES = 8;
     Memory mem;
     Interconnect ic(true);
     ic.attachMemory(&mem);
 
-    // Pre-cargar memoria para prueba
+    // Pre-cargar memoria
     mem.write(128, 0xCAFEBABE);
 
-    // Lanzar hilo del Interconnect
+    // Hilo del interconnect
     std::thread ic_thread(&Interconnect::processMessages, &ic);
 
-    // Crear PEs
-    PE pe0(0, &ic, "Instrucciones/pe0.txt");
-    PE pe1(1, &ic, "Instrucciones/pe1.txt");
-    PE pe2(2, &ic, "Instrucciones/pe2.txt");
+    // Crear vectores de PEs y threads
+    std::vector<std::unique_ptr<PE>> pes;
+    std::vector<std::thread> pe_threads;
 
-    ic.registerPE(0, &pe0);
-    ic.registerPE(1, &pe1);
-    ic.registerPE(2, &pe2);
+    for (int i = 0; i < NUM_PES; ++i) {
+        std::ostringstream filename;
+        filename << "Instrucciones/pe" << i << ".txt";
 
-    // Lanzar PEs en hilos independientes
-    std::thread pe0_thread(&PE::run, &pe0);
-    std::thread pe1_thread(&PE::run, &pe1);
-    std::thread pe2_thread(&PE::run, &pe2);
+        pes.push_back(std::make_unique<PE>(i, &ic, filename.str()));
+        ic.registerPE(i, pes.back().get());
 
-    // Esperar ejecución de los PEs
-    pe0_thread.join();
-    pe1_thread.join();
-    pe2_thread.join();
+        pe_threads.emplace_back(&PE::run, pes.back().get());
+    }
 
-    // Esperar que el Interconnect procese todo antes de terminar
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    std::exit(0);
+    // Esperar a que terminen los PEs
+    for (auto& t : pe_threads) {
+        t.join();
+    }
+
+    ic.requestStop();
+    ic_thread.join();
+
+    return 0;
 }

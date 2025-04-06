@@ -8,6 +8,8 @@
 #include <unordered_map>
 #include <cstdint>
 #include <map>
+#include <atomic>
+#include <iostream>
 
 class PE;
 class Memory;
@@ -52,9 +54,12 @@ public:
     void processMessages();
     void attachMemory(Memory* mem);
     void registerPE(int id, PE* pe);
+    void requestStop();   // para decirle que ya puede terminar
+    void waitForFinish(); // para esperar a que termine naturalmente
 
 private:
     std::queue<Message> fifo_queue;
+    std::atomic<bool> stop_requested;
 
     struct QoSComparator {
         bool operator()(const std::pair<int, Message>& a, const std::pair<int, Message>& b) {

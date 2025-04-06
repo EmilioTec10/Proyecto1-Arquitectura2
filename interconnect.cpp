@@ -3,7 +3,13 @@
 #include "PEs.h"
 #include <iostream>
 
-Interconnect::Interconnect(bool useQoS) : useQoS(useQoS), memory(nullptr) {}
+Interconnect::Interconnect(bool useQoS) : useQoS(useQoS), memory(nullptr), stop_requested(false) {}
+
+
+void Interconnect::requestStop() {
+    stop_requested = true;
+    queue_cv.notify_all(); // para desbloquear el wait
+}
 
 void Interconnect::enqueueMessage(const Message& msg) {
     std::lock_guard<std::mutex> lock(queue_mutex);
@@ -36,9 +42,33 @@ Message Interconnect::getNextMessage() {
 
 void Interconnect::processMessages() {
     while (true) {
-        Message msg = getNextMessage();
+        Message msg;
+
+        {
+            std::unique_lock<std::mutex> lock(queue_mutex);
+            queue_cv.wait(lock, [this]() {
+                return stop_requested || !fifo_queue.empty() || !qos_queue.empty();
+            });
+
+            if (stop_requested && fifo_queue.empty() && qos_queue.empty()) {
+                break;
+            }
+
+            if (useQoS && !qos_queue.empty()) {
+                msg = qos_queue.top().second;
+                qos_queue.pop();
+            } else if (!fifo_queue.empty()) {
+                msg = fifo_queue.front();
+                fifo_queue.pop();
+            } else {
+                continue; // por si hay un notify vacío
+            }
+        }
+
         handleMessage(msg);
     }
+
+    std::cout << "[IC] Finalizó procesamiento de mensajes.\n";
 }
 
 void Interconnect::attachMemory(Memory* mem) {
