@@ -4,10 +4,10 @@
 #include <thread>
 #include <memory> // para std::unique_ptr
 #include <sstream> // para construir nombres de archivo
-#include "PEs.cpp"
-#include "interconnect.cpp"
-#include "memory.cpp"
-#include "cache.cpp" 
+#include "PEs.h"
+#include "interconnect.h"
+#include "memory.h"
+#include "cache.h" 
 
 
 
@@ -30,8 +30,9 @@ int main() {
 
     for (int i = 0; i < NUM_PES; ++i) {
         std::ostringstream filename;
-        filename << "Instrucciones/pe" << i << ".txt";
-
+        //filename << "Instrucciones/pe" << i << ".txt";
+        filename << "/home/mrr79/Documents/Arqui 2/Proy1/Proyecto1-Arquitectura2/Instrucciones/pe" << i << ".txt";
+    
         pes.push_back(std::make_unique<PE>(i, &ic, filename.str()));
         ic.registerPE(i, pes.back().get());
 

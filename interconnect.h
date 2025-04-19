@@ -10,6 +10,9 @@
 #include <map>
 #include <atomic>
 #include <iostream>
+#include <fstream>
+#include <chrono>
+#include <fstream>
 
 class PE;
 class Memory;
@@ -44,8 +47,13 @@ struct InvalidationTracker {
     int qos = 0;
 };
 
-std::map<int, InvalidationTracker> invalidation_map;
-int next_inv_id = 0;
+
+
+extern std::map<int, InvalidationTracker> invalidation_map;
+extern int next_inv_id;
+
+extern std::unordered_map<std::string, std::chrono::steady_clock::time_point> enqueue_times;
+
 
 class Interconnect {
 public:

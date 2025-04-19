@@ -1,0 +1,2 @@
+g++ -o main cache.cpp memory.cpp interconnect.cpp PEs.cpp main.cpp
+./"main"

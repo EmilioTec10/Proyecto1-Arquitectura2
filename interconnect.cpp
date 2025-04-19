@@ -2,6 +2,17 @@
 #include "memory.h"
 #include "PEs.h"
 #include <iostream>
+#include <chrono>
+#include <fstream>
+
+std::map<int, InvalidationTracker> invalidation_map;
+int next_inv_id = 0;
+
+std::unordered_map<std::string, std::chrono::steady_clock::time_point> enqueue_times;
+namespace std {
+    // A
+}
+
 
 Interconnect::Interconnect(bool useQoS) : useQoS(useQoS), memory(nullptr), stop_requested(false) {}
 
@@ -11,8 +22,19 @@ void Interconnect::requestStop() {
     queue_cv.notify_all(); // para desbloquear el wait
 }
 
+
+
+
 void Interconnect::enqueueMessage(const Message& msg) {
     std::lock_guard<std::mutex> lock(queue_mutex);
+
+    auto now = std::chrono::steady_clock::now();  // Obtener la marca de tiempo
+
+    // Generar una clave única basada en los campos del mensaje
+    std::string key = std::to_string(msg.SRC) + "_" + std::to_string(msg.DEST) + "_" + std::to_string(msg.ADDR);
+    
+    enqueue_times[key] = now;  // Almacenar el tiempo cuando el mensaje es encolado
+
     if (useQoS) {
         qos_queue.emplace(msg.QoS, msg);
     } else {
@@ -41,6 +63,14 @@ Message Interconnect::getNextMessage() {
 }
 
 void Interconnect::processMessages() {
+
+    std::ofstream log_file("message_times.txt", std::ios::trunc);  // Abrir el archivo en modo trunc
+    
+    if (!log_file.is_open()) {
+        std::cerr << "Error al abrir el archivo de registro de tiempos.\n";
+        return;
+    }
+    
     while (true) {
         Message msg;
 
@@ -65,10 +95,25 @@ void Interconnect::processMessages() {
             }
         }
 
+        // Calcular el tiempo que el mensaje pasó en la cola
+        // Usamos la clave generada a partir de los campos del mensaje
+        std::string key = std::to_string(msg.SRC) + "_" + std::to_string(msg.DEST) + "_" + std::to_string(msg.ADDR);
+        auto enqueued_time = enqueue_times[key];
+        auto now = std::chrono::steady_clock::now();
+        auto time_in_queue = std::chrono::duration_cast<std::chrono::microseconds>(now - enqueued_time).count();
+
+        // Guardar el tiempo en el archivo de texto
+        log_file << "Mensaje de tipo " << static_cast<int>(msg.type)
+                 << " pasó " << time_in_queue << " us en la cola. (SRC: "
+                 << msg.SRC << ", DEST: " << msg.DEST << ")\n";
+
+
         handleMessage(msg);
+        
     }
 
     std::cout << "[IC] Finalizó procesamiento de mensajes.\n";
+    log_file.close();  // Cerrar el archivo después de terminar
 }
 
 void Interconnect::attachMemory(Memory* mem) {
