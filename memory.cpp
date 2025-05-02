@@ -5,7 +5,8 @@ Memory::Memory() {
     memory.resize(SIZE, 0); // inicializa toda la memoria en cero
 }
 
-void Memory::write(uint32_t addr, uint32_t value) {
+void Memory::write(uint32_t addr, uint32_t value) { //escritura en memoria , maneja el addr
+    //y el offset
     std::lock_guard<std::mutex> lock(mem_mutex);
     size_t index = addr / 4;
 

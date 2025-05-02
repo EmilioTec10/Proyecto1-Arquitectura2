@@ -4,17 +4,19 @@
 #include <iostream>
 #include <chrono>
 #include <fstream>
-
+#include "event.h" //añadido del evento
 #include <unordered_map>
 #include <string>
-
 struct InstructionTiming {
     uint64_t enqueue_time = 0;
     uint64_t start_process_time = 0;
     uint64_t finish_time = 0;
     uint32_t bytes = 0;
 };
-
+//bytes_totales_Eventos , pe_id
+//nota , al revisar el encolador q0s, se debe de garantizar que 
+//al añadir el evento ymluego sacarlo, si tiene un mismo qos, ver si se debe resolver
+//o si entra dual al bus, y entraria por eventos dobles triples etc, pregutnar al profe
 // Variables globales
 std::unordered_map<std::string, InstructionTiming> instruction_stats;
 uint64_t global_clock = 0;
@@ -26,6 +28,7 @@ std::unordered_map<std::string, std::chrono::steady_clock::time_point> enqueue_t
 namespace std {
     // A
 }
+std::vector<Evento> eventos; //AÑADIDO DEL VECTOR EVENTOS, FOR TESTING
 
 
 Interconnect::Interconnect(bool useQoS) : useQoS(useQoS), memory(nullptr), stop_requested(false) {}
@@ -67,8 +70,8 @@ Message Interconnect::getNextMessage() {
         qos_queue.pop();
         return top.second;
     } else {
-        Message msg = fifo_queue.front();
-        fifo_queue.pop();
+        Message msg = fifo_queue.front(); //obtiene el mensaje
+        fifo_queue.pop(); //le hace pop al mensaje
         return msg;
     }
 }
@@ -110,9 +113,8 @@ void Interconnect::processMessages() {
         instruction_stats[key].start_process_time = global_clock;
 
         // Procesar mensaje y avanzar el reloj lógico
-        handleMessage(msg);
+        handleMessage(msg); //aca procesa el mensaje , deberia de llamar a la clase evento. TO TEST
         global_clock++;
-
         // Registrar finalización si es una respuesta final al PE
         if (msg.type == MessageType::WRITE_RESP || msg.type == MessageType::READ_RESP) {
             // Usamos el DEST porque el PE que recibe es el que inició la instrucción
@@ -146,7 +148,8 @@ void Interconnect::attachMemory(Memory* mem) {
 void Interconnect::registerPE(int id, PE* pe) {
     pe_map[id] = pe;
 }
-
+//en este metodo se realiza el procesado , se indica que se hace 
+//aca es donde deberia de estar el evento de procesado , lectura y lectura/escritura
 void Interconnect::handleMessage(const Message& msg) {
     switch (msg.type) {
         case MessageType::WRITE_MEM: {

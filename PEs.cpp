@@ -11,7 +11,7 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
 
     void PE::run() {
         std::ifstream infile(instruction_file);
-        if (!infile.is_open()) {
+        if (!infile.is_open()) { //trata de leer el archivo de instrucciones
             std::cerr << "[PE " << int(pe_id) << "] No se pudo abrir el archivo " << instruction_file << "\n";
             return;
         }
@@ -24,7 +24,6 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
             int qos;
     
             iss >> opcode >> std::hex >> addr >> std::hex >> data_or_size >> std::hex >> qos;
-    
             if (opcode == "WRITE_MEM") {
                 Message msg = {
                     MessageType::WRITE_MEM,  // [0] Tipo de mensaje: escritura
@@ -39,6 +38,26 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
                     qos                     // [9] QoS: prioridad del mensaje
                 };
                 interconnect->enqueueMessage(msg);
+                //peso del mensaje en bytes
+                //tipo de mensaje = 3 bits, por alineacion , 1 BYTE
+                //id del pe = 3 , por alineacion 1 BYTE
+                //DEST no se utiliza , no se lee como tal y no deberia de estar, ningun byte pesa
+                // direccion de memoria , por alineacion de 4 bytes, accedo a 4096 posiciones
+                //entonces necesito 2 BYTES
+                //tamaño a leer , no utilizado
+                // Cache line no se utiliza tampoco
+                //data a enviar a memoria, 4 bytes como maximo, dado que escribe a una direccion 
+                //no a multiples , 4 BYTES
+                //1 bit para representar la cantidad de lineas de cache
+                //inicio de la linea de cache  (ARREGLAR)
+                //QOS, en standby la prioridad, consultar
+                //TOTAL DE MOMENTO:  8 BYTES , incluye el bit de lineas de cache, 
+                //falta agregarle la linea de cache a iniciar , y  el valor del Q0S
+                //realmente yo deberia de poder escribir multiples lineas de cache en memoria no solo
+                //4 lineas unicamente, revisar esto 
+                //por ejemplo deberia de poder decirle empieze en la linea 4 de cache y lea
+                //desde la x hasta la x , puede leer unicamente de 4 en 4 bytes, entonces el
+                //inicio deberia de ser un multiplo de 4 en la linea de cache
             }
             else if (opcode == "READ_MEM") {
                 Message msg = {
@@ -51,8 +70,17 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
                     0,                         // [6] DATA: sin uso
                     0, 0,                      // [7,8] NUM_OF_CACHE_LINES, START_CACHE_LINE: no usados
                     qos                        // [9] QoS: prioridad
+                    //32 bits la prioridad.
                 };
                 interconnect->enqueueMessage(msg);
+                //peso del mensaje en bytes
+                //tipo de mensaje = 3 bits, por alineacion , 1 BYTE
+                //id del pe = 3 , por alineacion 1 BYTE
+                //2 bytes para la direccion de memoria a leer
+                // 4* n bytes a leer, con n=1  , no debe de sobrepasar el tamaño de la cache
+                //falta verificar en que linea escribe , stand by , pero deberia representar 128 en bytes
+                //7 y 8 tambien deberian de utilizarse
+                //total de momento 4 BYTES + cantidad de bytes a leer.
             }
 
             else if (opcode == "BROADCAST_INVALIDATE") {
@@ -64,6 +92,10 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
                     0, 0, 0, qos
                 };
                 interconnect->enqueueMessage(msg);
+                //desgloce del mensaje
+                //1 byte para el tipo de mensaje
+                //1 byte para el peid
+                // 1 byte de la linea de cache a invalidar.
             }
 
             else {
@@ -75,10 +107,12 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
     }
 
 void PE::receiveMessage(const Message& msg) {
+    //aca esta el guardado de la linea de cache
+    //guarda N bytes en cache, que especifica el mensaje como tal
+    //dependiendo de la verifcacion , consume o no bytes en el bus.
     if (msg.type == MessageType::READ_RESP) {
         std::vector<uint8_t> data(4);
         uint32_t value = msg.DATA;
-
         data[0] = value & 0xFF;
         data[1] = (value >> 8) & 0xFF;
         data[2] = (value >> 16) & 0xFF;
@@ -109,14 +143,15 @@ void PE::receiveMessage(const Message& msg) {
     }
 }
 
-void PE::invalidateCacheLine(int line) {
+void PE::invalidateCacheLine(int line) { //metodo que invalida la linea de cache
     cache.invalidateLine(line);
     std::cout << "[PE " << int(pe_id) << "] Línea " << line << " invalidada\n";
 
-    Message ack = {
+    Message ack = { //message aknowledge
         MessageType::INV_ACK,
         pe_id, -1, 0, 0, 0,
         0, 0, 0, 0 
     };
     interconnect->enqueueMessage(ack);
+    //toma 
 }
