@@ -9,4 +9,5 @@ class event_q(){
         void addEvent(event *newevent);
         Node* popEvent();
         event_q(int maxevents);
+        Node* getHead();
 };

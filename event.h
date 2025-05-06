@@ -13,6 +13,9 @@ class event{ //voy a tener 3 tipos de evento, read message, execute, memoria
         void insert_peid(int pe_id); //insertar pe a la lista
         void addBytes(int number);
         void removeBytes(int number);
+        int getpe_id();
+        int getBytes();
+        str::string get_event_name();
     private:
         int pe_id; //id de los vectores en el proceso asociado.
         std::string event_name = ""; //nombre del evento.

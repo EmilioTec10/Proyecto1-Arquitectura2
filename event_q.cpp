@@ -39,3 +39,6 @@ Node* event_q:: popEvent(){
 event_q::event_q(int maxEvents) {
     this->MaxEvents = maxEvents;
 }
+event* event::getHead(){
+    return this->head->getEvent();
+}

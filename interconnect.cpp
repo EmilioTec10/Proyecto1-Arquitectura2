@@ -56,7 +56,7 @@ void Interconnect::enqueueMessage(const Message& msg) {
     }
     queue_cv.notify_one();
 }
-
+//se hace pop a la cola del mensaje
 Message Interconnect::getNextMessage() {
     std::unique_lock<std::mutex> lock(queue_mutex);
 
@@ -80,7 +80,7 @@ Message Interconnect::getNextMessage() {
 //aca se cuenta los ciclos y los bytes
 //pendiente en readResponse.
 //falta una verificacion de que exista un readmem para un read response
-//aca se hace el pop de la cola, 
+
 void Interconnect::processMessages() {
     std::ofstream log_file("message_times.txt", std::ios::trunc);
     if (!log_file.is_open()) {
@@ -120,9 +120,41 @@ void Interconnect::processMessages() {
         // Procesar mensaje y avanzar el reloj lógico
         handleMessage(msg); //aca procesa el mensaje , deberia de llamar a la clase evento. TO TEST
         
-        
         global_clock++;
         // Registrar finalización si es una respuesta final al PE
+        //le hace un proceso de dequeue
+        flag = 0;
+        *event event = eventq->getEvent(); //borra el nodo
+        int eventCount=0;
+        //verifico que el puntero no sea nulo
+        int event_pe_id=0;
+        std::string e_nombre = "";
+        int bytes = 0;
+        if (event != nullptr){
+            event_pe_id= event->getpe_id();
+            //e_nombre = event->get_event_name(); stand by
+            bytes = event->getBytes();
+        }
+        delete event
+        //checkear esto , si descolarlos de golpe o por llamada al process message.
+        while(flag !=1){
+            if(event != nullptr){
+                if(eventq->getHead()->get_event_name()!=event_pe_id){
+                    flag =1;
+                }
+                else{
+                    //si no,hace dequeue
+                    *event event = eventq->getEvent();
+                    bytes+= event->getBytes();
+                    eventCount+=1;
+                    delete event
+                }
+            }
+            else{
+                flag=1; //si la cola de eventos es nula, retorna 
+            }
+
+        }
         if (msg.type == MessageType::WRITE_RESP || msg.type == MessageType::READ_RESP) {
             // Usamos el DEST porque el PE que recibe es el que inició la instrucción
             std::string response_key = std::to_string(msg.DEST) + "_" + std::to_string(msg.ADDR);
@@ -131,10 +163,8 @@ void Interconnect::processMessages() {
             const auto& stat = instruction_stats[response_key];
 
             log_file << "Instr (" << response_key << ") Total: "
-                     << (stat.finish_time - stat.enqueue_time) << " ciclos, "
-                     << "En cola: " << (stat.start_process_time - stat.enqueue_time) << " ciclos, "
-                     << "Transfer: " << (stat.finish_time - stat.start_process_time) << " ciclos, "
-                     << "Bytes: " << stat.bytes << "\n";
+                     << "Ciclos totales: " << (eventCount) << " ciclos"
+                     << "Bytes: " << bytes << "\n";
                      // Instr rd es la direccion a la que esta accediendo
                      // en cola: desde que se encolo hasta qantes de emepzar a procesarse
                     // transfer: desde procesarse hasta que se completa operacion= generar respuesta. 

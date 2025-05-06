@@ -20,4 +20,13 @@ event::event(const std::string& nombre, int pe_id_,int totalbytes){
     this->pe_id = pe_id_;
     this->total_bytes_event = totalbytes;
 }
+int event::getpe_id(){
+    return this->pe_id;
+}
+int event::getBytes(){
+    return this->total_bytes_event;
+}
+std::string event::get_event_name();
+    return this->event_name;
+
 
