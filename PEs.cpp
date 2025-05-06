@@ -81,6 +81,7 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
                 //falta verificar en que linea escribe , stand by , pero deberia representar 128 en bytes
                 //7 y 8 tambien deberian de utilizarse
                 //total de momento 4 BYTES + cantidad de bytes a leer.
+                //
             }
 
             else if (opcode == "BROADCAST_INVALIDATE") {

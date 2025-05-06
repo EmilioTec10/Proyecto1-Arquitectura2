@@ -9,8 +9,8 @@
 #include <string>
 struct InstructionTiming {
     uint64_t enqueue_time = 0;
-    uint64_t start_process_time = 0;
-    uint64_t finish_time = 0;
+    uint64_t start_process_time = 0; //se mete en la cola
+    uint64_t finish_time = 0; //termina hasta que
     uint32_t bytes = 0;
 };
 //bytes_totales_Eventos , pe_id
@@ -41,7 +41,7 @@ void Interconnect::requestStop() {
 
 
 
-
+//se encola el mensaje
 void Interconnect::enqueueMessage(const Message& msg) {
     std::lock_guard<std::mutex> lock(queue_mutex);
 
@@ -74,8 +74,13 @@ Message Interconnect::getNextMessage() {
         fifo_queue.pop(); //le hace pop al mensaje
         return msg;
     }
-}
+    //aca se obtiene el mensaje, se crean los eventos.
 
+}
+//aca se cuenta los ciclos y los bytes
+//pendiente en readResponse.
+//falta una verificacion de que exista un readmem para un read response
+//aca se hace el pop de la cola, 
 void Interconnect::processMessages() {
     std::ofstream log_file("message_times.txt", std::ios::trunc);
     if (!log_file.is_open()) {
@@ -114,6 +119,8 @@ void Interconnect::processMessages() {
 
         // Procesar mensaje y avanzar el reloj lógico
         handleMessage(msg); //aca procesa el mensaje , deberia de llamar a la clase evento. TO TEST
+        
+        
         global_clock++;
         // Registrar finalización si es una respuesta final al PE
         if (msg.type == MessageType::WRITE_RESP || msg.type == MessageType::READ_RESP) {
@@ -133,7 +140,6 @@ void Interconnect::processMessages() {
                     // transfer: desde procesarse hasta que se completa operacion= generar respuesta. 
                     // BYTES NO ENTIENDO
         }
-        
     }
 
     std::cout << "[IC] Finalizó procesamiento de mensajes.\n";
@@ -181,9 +187,20 @@ void Interconnect::handleMessage(const Message& msg) {
                 0, 0,
                 msg.QoS
             };
-
+            //3 eventos, 11 bytes 3 lectura de instruc y uno por cada linea de cache. 
+            //2 eventos de lectura
+            event *evento = new event("lectura", msg.SRC,4);
+            event *evento2 = new event("lectura", msg.SRC,4);
+            event *evento3 = new event("lectura", msg.SRC,4);
+            this->eventq.addEvent(evento);
+            this->eventq.addEvent(evento2);
+            this->eventq.addEvent(evento3);
+            //eventos de lectura/escritura
+            for(int i=0;i<msg.NUM_OF_CACHE_LINES;i++){//hay que verificar que contiene numofcachelines
+                event *lcevent = new event("Memoria", msg.SRC,16);
+                this->eventq.addEvent(lcevent); //añadimos N eventos por cantidad de lineas de cache.
+            }
             enqueueMessage(response);
-
             break;
         }
 
@@ -210,7 +227,15 @@ void Interconnect::handleMessage(const Message& msg) {
                     0, 0,
                     msg.QoS
                 };
-                enqueueMessage(response);
+                enqueueMessage(response); 
+                //2 eventos de lectura
+                event *evento = new event("lectura", msg.SRC,4);
+                event *evento2 = new event("lectura", msg.SRC,4);
+                event *evento3 = new event("excecute", msg.SRC,2);
+                this->eventq.addEvent(evento);
+                this->eventq.addEvent(evento2);
+                this->eventq.addEvent(evento3);
+                
             } catch (const std::out_of_range& e) {
                 std::cerr << " -> Error: " << e.what() << "\n";
             }
@@ -237,10 +262,17 @@ void Interconnect::handleMessage(const Message& msg) {
         
             if (pe_map.find(msg.DEST) != pe_map.end()) {
                 pe_map[msg.DEST]->receiveMessage(msg);
+                // 1 evento escritura, 1 execute
+                event* evento_lectura = new event("lectura", msg.DEST, 4);
+                this->eventq.addEvent(evento_lectura);
+                event* evento_execute = new event("execute", msg.DEST, 4);
+                this->eventq.addEvent(evento_execute);
+
+
             } else {
                 std::cerr << " -> PE " << msg.DEST << " no registrado.\n";
             }
-        
+
             break;
         }
 
@@ -266,7 +298,14 @@ void Interconnect::handleMessage(const Message& msg) {
                     .qos = msg.QoS
                 };
             }
-        
+            //aca es 1 de lectura, y 1 de excecute , con 7 bytes, 1 para cada pe
+            //al poner 1 bit en 0, (PEOR ESCENARIO , TODOS TIENEN LA LINEA DE CACHE DEL
+            //PE QUIEN LA MANDO , CONSULTAR)
+            event *evento = new event("lectura", msg.SRC,4);
+            event *evento2 = new event("excecute", msg.SRC,7);
+            this->eventq.addEvent(evento);
+            this->eventq.addEvent(evento2);
+            
             break;
         }
 
@@ -288,6 +327,12 @@ void Interconnect::handleMessage(const Message& msg) {
                         tracker.qos
                     };
 
+                    // 3 bytes, 1 evento:  1 de escritura y 1 de execute. 
+                    event *evento = new event("lectura", msg.SRC,3);
+                    event *evento2 = new event("execute", msg.SRC,3);
+                    this->eventq.addEvent(evento);
+                    this->eventq.addEvent(evento2);
+
                     enqueueMessage(complete);
                     invalidation_map.erase(id);
                     break; 
@@ -302,6 +347,13 @@ void Interconnect::handleMessage(const Message& msg) {
                       << " (QoS: " << msg.QoS << ")\n";
         
             if (pe_map.find(msg.DEST) != pe_map.end()) {
+                // 1 evento de lectura de 3bytes 
+            event* evento_lectura = new event("lectura", msg.DEST, 4);
+            this->eventq.addEvent(evento_lectura);
+
+            // 1 evento de execute de 3bytes
+            event* evento_execute = new event("execute", msg.DEST, 4);
+            this->eventq.addEvent(evento_execute);
                 pe_map[msg.DEST]->receiveMessage(msg);
             } else {
                 std::cerr << " -> PE " << msg.DEST << " no registrado.\n";

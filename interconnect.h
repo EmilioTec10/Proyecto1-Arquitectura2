@@ -13,7 +13,8 @@
 #include <fstream>
 #include <chrono>
 #include <fstream>
-
+#include "event.h"
+#include "event_q.h"
 class PE;
 class Memory;
 
@@ -70,6 +71,8 @@ public:
 private:
     std::queue<Message> fifo_queue;
     std::atomic<bool> stop_requested;
+    //añadido de la cola de eventos:
+    event_q *eventq = new event_q(30); //maxima cantidad de eventos en el bus
 
     struct QoSComparator {
         bool operator()(const std::pair<int, Message>& a, const std::pair<int, Message>& b) {
@@ -91,5 +94,4 @@ private:
     Message getNextMessage();
     void handleMessage(const Message& msg);
 };
-
 #endif
