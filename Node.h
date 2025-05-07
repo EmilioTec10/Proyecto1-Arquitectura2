@@ -1,11 +1,11 @@
-#include "event.h"
+#include "evento.h"
 class Node{
     private:
         Node *next;
-        event *event;
+        evento *mi_evento;
     public:
         Node* getNext();
-        event* getEvent();
+        evento* getevento();
         void setNext(Node *nextnode);
-        Node(Event* e, Node* n = nullptr);
+        Node(evento* e, Node* n = nullptr);
 };

@@ -1,6 +1,6 @@
 #include "Node.h"
-event* Node:: getEvent(){
-    return this->event;
+evento* Node:: getevento(){
+    return this->mi_evento;
 }
 
 Node* Node:: getNext(){
@@ -9,7 +9,7 @@ Node* Node:: getNext(){
 void Node::setNext(Node *nextnode){
     this->next = nextnode;
 }
-Node::Node(Event* e, Node* n) {
-    this->event = e;
+Node::Node(evento* e, Node* n) {
+    this->mi_evento = e;
     this->next = n;
 }

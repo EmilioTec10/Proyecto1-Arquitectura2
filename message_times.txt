@@ -1,7 +1,33 @@
-Instr (1_100) Total: 4 ciclos, En cola: 2 ciclos, Transfer: 2 ciclos, Bytes: 4
-Instr (1_100) Total: 5 ciclos, En cola: 2 ciclos, Transfer: 3 ciclos, Bytes: 4
-Instr (0_296) Total: 9 ciclos, En cola: 7 ciclos, Transfer: 2 ciclos, Bytes: 4
-Instr (0_296) Total: 12 ciclos, En cola: 10 ciclos, Transfer: 2 ciclos, Bytes: 4
-Instr (0_306) Total: 13 ciclos, En cola: 9 ciclos, Transfer: 4 ciclos, Bytes: 3
-Instr (0_296) Total: 14 ciclos, En cola: 10 ciclos, Transfer: 4 ciclos, Bytes: 4
-Instr (0_296) Total: 15 ciclos, En cola: 10 ciclos, Transfer: 5 ciclos, Bytes: 4
+Instr (0) Total: Ciclos totales: 3 ciclosBytes: 28
+Instr (1) Total: Ciclos totales: 3 ciclosBytes: 28
+Instr (1) Total: Ciclos totales: 2 ciclosBytes: 10
+Instr (1) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (0) Total: Ciclos totales: 1 ciclosBytes: 11
+Instr (3) Total: Ciclos totales: 3 ciclosBytes: 28
+Instr (2) Total: Ciclos totales: 3 ciclosBytes: 28
+Instr (2) Total: Ciclos totales: 2 ciclosBytes: 10
+Instr (4) Total: Ciclos totales: 3 ciclosBytes: 28
+Instr (3) Total: Ciclos totales: 2 ciclosBytes: 10
+Instr (4) Total: Ciclos totales: 2 ciclosBytes: 10
+Instr (3) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (4) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (6) Total: Ciclos totales: 3 ciclosBytes: 28
+Instr (6) Total: Ciclos totales: 2 ciclosBytes: 10
+Instr (5) Total: Ciclos totales: 2 ciclosBytes: 10
+Instr (7) Total: Ciclos totales: 3 ciclosBytes: 28
+Instr (7) Total: Ciclos totales: 2 ciclosBytes: 10
+Instr (6) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (7) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (5) Total: Ciclos totales: 3 ciclosBytes: 28
+Instr (2) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (5) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (0) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (0) Total: Ciclos totales: 2 ciclosBytes: 10
+Instr (0) Total: Ciclos totales: 2 ciclosBytes: 10
+Instr (0) Total: Ciclos totales: 3 ciclosBytes: 28
+Instr (0) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (0) Total: Ciclos totales: 1 ciclosBytes: 11
+Instr (2) Total: Ciclos totales: 1 ciclosBytes: 6
+Instr (0) Total: Ciclos totales: 1 ciclosBytes: 8
+Instr (7) Total: Ciclos totales: 1 ciclosBytes: 6
+Instr (0) Total: Ciclos totales: 1 ciclosBytes: 8

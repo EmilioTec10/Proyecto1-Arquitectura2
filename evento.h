@@ -1,30 +1,33 @@
-#ifndef event
-#define event
+#ifndef EVENTO_H
+#define EVENTO_H
 #include <string>
 #include <iostream>
 #include <vector>
-class event{ //voy a tener 3 tipos de evento, read message, execute, memoria
-//  y una cola de eventos de sucesos , yo creo eventos cada que calendarizo, y si existe competencia
+class evento{ //voy a tener 3 tipos de eventoo, read message, execute, memoria
+//  y una cola de eventoos de sucesos , yo creo eventoos cada que calendarizo, y si existe competencia
 //agrego el pe_id a la lista de pe_id
     //aca debe de haber un array de peid para el pe asociado.
     public:
     
-        event(const std::string& nombre_,int peid ,int totalbytes); //constructor
+        evento(const std::string& nombre_, int peid, int totalbytes); //constructor
+        
         void insert_peid(int pe_id); //insertar pe a la lista
         void addBytes(int number);
         void removeBytes(int number);
         int getpe_id();
         int getBytes();
-        str::string get_event_name();
+        std::string get_evento_name();
     private:
         int pe_id; //id de los vectores en el proceso asociado.
-        std::string event_name = ""; //nombre del evento.
+        std::string evento_name = ""; //nombre del eventoo.
         //analizar si incluir bytes totales del proceso a la lista, como una lista de bytes
         //siendo procesador por el bus.
         //necesito una busqueda por nombre
-        int total_bytes_event; //cambiar por unsigned bytes.
+        int total_bytes_evento; //cambiar por unsigned bytes.
         //son diferenciados ,
-        //crear cola de eventos con un tope de eventos.es como mi buffer
+        //crear cola de eventoos con un tope de eventoos.es como mi buffer
+        evento *mi_evento;
+
         
 };
 #endif
