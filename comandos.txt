@@ -1,2 +1,2 @@
-g++ -o main cache.cpp memory.cpp interconnect.cpp PEs.cpp main.cpp
-./"main"
+g++ -Wall -Wextra -g3 "main.cpp" "memory.cpp" "interconnect.cpp" "PEs.cpp" "Node.cpp" "evento.cpp" "evento_q.cpp" "cache.cpp" -o "output/main"
+./output/main

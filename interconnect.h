@@ -94,4 +94,7 @@ private:
     Message getNextMessage();
     void handleMessage(const Message& msg);
 };
+
+std::string messageTypeToString(MessageType type);
+
 #endif
