@@ -37,7 +37,7 @@ struct Message {
     uint32_t ADDR;
     int SIZE;
     int CACHE_LINE;
-    uint32_t DATA;
+    std::vector<uint8_t> DATA; 
     int NUM_OF_CACHE_LINES;
     int START_CACHE_LINE;
     int QoS;

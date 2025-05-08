@@ -255,8 +255,13 @@ void Interconnect::handleMessage(const Message& msg) {
 
             if (memory) {
                 try {
-                    memory->write(msg.ADDR, msg.DATA);
-                    std::cout << " -> Datos escritos: 0x" << std::hex << msg.DATA << std::dec << "\n";
+                    memory->writeBlock(msg.ADDR, msg.DATA);
+                    std::cout << " -> Datos escritos (" << msg.DATA.size() << " bytes): ";
+                    for (uint8_t byte : msg.DATA) {
+                        std::cout << std::hex << static_cast<int>(byte) << " ";
+                    }
+                    std::cout << std::dec << "\n";
+
                     status = 0x1; // Indica éxito
                 } catch (const std::out_of_range& e) {
                     std::cerr << " -> Error: " << e.what() << "\n";
@@ -272,7 +277,7 @@ void Interconnect::handleMessage(const Message& msg) {
                 msg.ADDR,
                 0,             // SIZE
                 0,
-                status,        // STATUS como DATA (1 byte)
+                std::vector<uint8_t>{ static_cast<uint8_t>(status) },        // STATUS como DATA (1 byte)
                 0, 0,
                 msg.QoS
             };
@@ -298,13 +303,35 @@ void Interconnect::handleMessage(const Message& msg) {
                       << " at address " << msg.ADDR
                       << ", size = " << msg.SIZE << "\n";
 
+            // alineacion
+            if (msg.ADDR % 4 != 0) {
+                std::cerr << " -> ERROR: Dirección " << msg.ADDR << " no está alineada a 4 bytes.\n";
+                break;
+            }
+
+            // memoria
+            if (msg.ADDR + msg.SIZE > 4096) {
+                std::cerr << " -> ERROR: La lectura excede el límite de memoria (4096 bytes).\n";
+                break;
+            }
+
+            // SIZE
+            if (msg.SIZE <= 0) {
+                std::cerr << " -> ERROR: SIZE inválido (debe ser >0).\n";
+                break;
+            }
+            if (msg.SIZE > 2048) {  // límite práctico: tamaño máximo del cache
+                std::cerr << " -> ADVERTENCIA: SIZE excede tamaño del cache PE (2048 bytes).\n";
+            }
+
             if (!memory) {
                 std::cerr << " -> Memoria no conectada.\n";
                 break;
             }
 
             try {
-                uint32_t result = memory->read(msg.ADDR);
+                //para leer bloque completo. 
+                std::vector<uint8_t> result = memory->readBlock(msg.ADDR, msg.SIZE);
                 Message response = {
                     MessageType::READ_RESP,
                     -1,             // SRC no aplica
@@ -334,10 +361,35 @@ void Interconnect::handleMessage(const Message& msg) {
 
         case MessageType::READ_RESP: {
             std::cout << "[IC] READ_RESP to PE" << msg.DEST
-                      << " with data: 0x" << std::hex << msg.DATA << std::dec << "\n";
+                    << " with data (" << msg.DATA.size() << " bytes): ";
+
+            for (uint8_t byte : msg.DATA) {
+                std::cout << std::hex << static_cast<int>(byte) << " ";
+            }
+            std::cout << std::dec << "\n";
 
             if (pe_map.find(msg.DEST) != pe_map.end()) {
                 pe_map[msg.DEST]->receiveMessage(msg);
+
+                evento* evento_fijo = new evento("lectura_fija", msg.DEST, 4, msg.type);
+                this->eventoq->addevento(evento_fijo);
+
+                // ✅ Ahora usamos el tamaño real del vector de datos
+                int byte_count = msg.DATA.size();
+                if (byte_count == 0) byte_count = 1;  // Por seguridad
+
+                int num_eventos = (byte_count + 15) / 16;  // Cada 16 bytes suma un evento
+                if (num_eventos == 0) num_eventos = 1;     // Mínimo 1 evento
+
+                std::cout << "[IC] Generando " << num_eventos 
+                        << " eventoss de ejecucion para bloque de " 
+                        << byte_count << " bytes\n";
+
+                for (int i = 0; i < num_eventos; ++i) {
+                    evento* evento_exec = new evento("execute", msg.DEST, 4, msg.type);
+                    this->eventoq->addevento(evento_exec);
+                }
+
             } else {
                 std::cerr << " -> PE " << msg.DEST << " no registrado.\n";
             }
@@ -347,7 +399,12 @@ void Interconnect::handleMessage(const Message& msg) {
 
         case MessageType::WRITE_RESP: {
             std::cout << "[IC] WRITE_RESP to PE" << msg.DEST
-                      << " with status: 0x" << std::hex << msg.DATA << std::dec << "\n";
+                    << " with status (" << msg.DATA.size() << " bytes): ";
+            for (uint8_t byte : msg.DATA) {
+                std::cout << std::hex << static_cast<int>(byte) << " ";
+            }
+            std::cout << std::dec << "\n";
+
         
             if (pe_map.find(msg.DEST) != pe_map.end()) {
                 pe_map[msg.DEST]->receiveMessage(msg);
@@ -412,7 +469,8 @@ void Interconnect::handleMessage(const Message& msg) {
                         -1,
                         tracker.source_pe, // el PE original del broadcast
                         0, 0, 0,
-                        0, 0, 0,
+                        std::vector<uint8_t>{},
+                        0, 0,
                         tracker.qos
                     };
 

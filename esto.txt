@@ -1,0 +1,47 @@
+1. broadcast tiene que poder invalidar datos que fueron escritos por mi y leidos por mi.
+ debe de mandar invalidation ack y complete. 
+ 1. broadcast invalidate es ka sebak que le indica al bus que se deben de invalidar, el bus busca los pe a invalidar
+ cuando los pe invalidan , se lo mandan al interconncet el interconnect entonces recibe todos los invalidate aknoledge y genera el invalidate
+ complete , que se lo manda al pe que genero el bradcast invalidate 
+
+ --------DESGLOCE PROPUESTA PARA ESTE PROCESO----------------
+ el breadcast invalidate solo consumira un 2 eventos, 1 de lectura 1 de ejecucion , que sera el proceso para decirle
+ al bus acomodese a esperar los mensajes
+ los mensajes de inv complete consumen 2 eventos, 1 de lectura y 1 de ejecucion , que sera la invalidacion de la cache o del bit de validz
+este mensaje es por PEs
+por ultimo el broadcast complete, se manda al pe que envio el broadcast invalidate, como aknoledge , esto consume 2 eventos uno de lectura y otro de escritura 
+
+prueba: 
+write en pe0 
+leer en pe1
+broadcasta pe0 a los datos que leyo e1 y tiene en cache pe1. 
+el cache manda al bus la INV ACK, y sigue invalidando las otras del bus. cuando se invalidan todos 
+se manda al pe0 el INV COMPLETE. 
+
+Buscar cual es el dato que determina como se reparte el invalidate en los pes. 
+
+
+
+
+-> sabe a quienes tiene que invalidar???? eso para calcular cuantos bytes le doy a este invalidate: metrica broadcast: 1 byte por PES que tenga que invalidar . 1 evento lectura y y evento *PE que se invalide. 
+-> ver algo de ese bus (entra sale, invalidaciones)
+
+%%%%%%%
+
+read response: verficar que devuelva los datos que quiero. hacerlo con algo que escribi a ver si me lo devuelve. SI LO HACEEEE 
+que en el inteconect haya una funcioncilla para que cuando se recoge ese data, si es 16 es 1 evento si es mas dividirlo entre 16 t=YA LO HACE
+y esa es la cantidad de eventos. 
+
+si la data viene vacia; modificar la instruccion que tegna un parametro int de cuanto se leyo o se va a leer. este parametro es una resta de los
+parametros read mem. Digamos que la resta de 8: 
+                    cuantos me caben en 16: todos, entonces 1 evento. 
+                    la resta es mi numero de bytes. 
+
+EMPEZAR CON READ RESPONSE 
+
+
+
+
+2. steping: meter en el interconect un mutex donde se hace pop. tiene que conectarse con el main y el main a python. LUIS
+
+3. 

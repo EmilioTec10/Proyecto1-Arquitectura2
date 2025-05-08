@@ -23,7 +23,7 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
             uint32_t addr, data_or_size;
             int qos;
     
-            iss >> opcode >> std::hex >> addr >> std::hex >> data_or_size >> std::hex >> qos;
+            iss >> opcode >> std::hex >> addr >> data_or_size >> qos;
             if (opcode == "WRITE_MEM") {
                 Message msg = {
                     MessageType::WRITE_MEM,  // [0] Tipo de mensaje: escritura
@@ -32,7 +32,12 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
                     addr,                   // [3] ADDR: dirección de memoria a escribir
                     0,                      // [4] SIZE: no se usa en escritura (solo en lectura)
                     0,                      // [5] CACHE_LINE: no se usa aquí
-                    data_or_size,           // [6] DATA: dato que se quiere escribir
+                    std::vector<uint8_t>{ 
+                        static_cast<uint8_t>(data_or_size & 0xFF),
+                        static_cast<uint8_t>((data_or_size >> 8) & 0xFF),
+                        static_cast<uint8_t>((data_or_size >> 16) & 0xFF),
+                        static_cast<uint8_t>((data_or_size >> 24) & 0xFF)
+                    },           // [6] DATA: dato que se quiere escribir
                     1,                      // [7] NUM_OF_CACHE_LINES: valor fijo, por convención
                     0,                      // [8] START_CACHE_LINE: no usado, se deja 0
                     qos                     // [9] QoS: prioridad del mensaje
@@ -61,16 +66,15 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
             }
             else if (opcode == "READ_MEM") {
                 Message msg = {
-                    MessageType::READ_MEM,     // [0] Tipo de mensaje: lectura
-                    pe_id,                     // [1] SRC: ID del PE que solicita lectura
-                    -1,                        // [2] DEST: no aplica, el interconnect responde
-                    addr,                      // [3] ADDR: dirección de memoria a leer
+                    MessageType::READ_MEM,     // [0]
+                    pe_id,                     // [1]
+                    -1,                        // [2]
+                    addr,                      // [3]
                     static_cast<int>(data_or_size),  // [4] SIZE: cuántos bytes leer
-                    0,                         // [5] CACHE_LINE: no usado aquí
-                    0,                         // [6] DATA: sin uso
-                    0, 0,                      // [7,8] NUM_OF_CACHE_LINES, START_CACHE_LINE: no usados
-                    qos                        // [9] QoS: prioridad
-                    //32 bits la prioridad.
+                    0,                         // [5]
+                    std::vector<uint8_t>{},    // [6] DATA: sin uso
+                    0, 0,                      // [7,8]
+                    qos                        // [9]
                 };
                 interconnect->enqueueMessage(msg);
                 //peso del mensaje en bytes
@@ -90,7 +94,7 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
                     pe_id, -1,
                     0, 0,
                     static_cast<int>(addr), // aquí addr se interpreta como línea
-                    0, 0, 0, qos
+                    std::vector<uint8_t>{}, 0, 0, qos
                 };
                 interconnect->enqueueMessage(msg);
                 //desgloce del mensaje
@@ -113,7 +117,10 @@ void PE::receiveMessage(const Message& msg) {
     //dependiendo de la verifcacion , consume o no bytes en el bus.
     if (msg.type == MessageType::READ_RESP) {
         std::vector<uint8_t> data(4);
-        uint32_t value = msg.DATA;
+        uint32_t value = 0;
+        for (size_t i = 0; i < std::min((size_t)4, msg.DATA.size()); ++i) {
+            value |= (msg.DATA[i] << (8 * i));  // little-endian
+        }
         data[0] = value & 0xFF;
         data[1] = (value >> 8) & 0xFF;
         data[2] = (value >> 16) & 0xFF;
@@ -132,7 +139,7 @@ void PE::receiveMessage(const Message& msg) {
     }
 
     else if (msg.type == MessageType::WRITE_RESP) {
-        if (msg.DATA == 0x1) {
+        if (msg.DATA.size() == 1 && msg.DATA[0] == 0x1) {
             std::cout << "[PE " << int(pe_id) << "] WRITE_RESP recibido: escritura OK\n";
         } else {
             std::cout << "[PE " << int(pe_id) << "] WRITE_RESP recibido: escritura FALLÓ\n";
@@ -151,7 +158,7 @@ void PE::invalidateCacheLine(int line) { //metodo que invalida la linea de cache
     Message ack = { //message aknowledge
         MessageType::INV_ACK,
         pe_id, -1, 0, 0, 0,
-        0, 0, 0, 0 
+        std::vector<uint8_t>{}, 0, 0, 0 
     };
     interconnect->enqueueMessage(ack);
     //toma 
