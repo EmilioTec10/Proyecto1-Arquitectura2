@@ -59,8 +59,6 @@ void Interconnect::requestStop() {
 void Interconnect::enqueueMessage(const Message& msg) {
     std::lock_guard<std::mutex> lock(queue_mutex);
 
-
-    
     std::string key;
     if (msg.type == MessageType::READ_RESP || msg.type == MessageType::WRITE_RESP || msg.type == MessageType::INV_COMPLETE) {
         // Las respuestas usan DEST como clave (el PE original que hizo la petición)
@@ -70,10 +68,9 @@ void Interconnect::enqueueMessage(const Message& msg) {
         key = std::to_string(msg.SRC) + "_" + std::to_string(msg.ADDR);
     }
 
+    // Guardar en tiempo real la estadística de la instrucción
     auto &stat = instruction_stats[key];
-
-    instruction_stats[key].enqueue_time = global_clock;
-    //instruction_stats[key].bytes = (msg.type == MessageType::WRITE_MEM) ? 3 : msg.SIZE;
+    stat.enqueue_time = global_clock;
 
     // Encolar mensaje en la cola correspondiente
     if (useQoS) {
@@ -157,7 +154,9 @@ void Interconnect::processMessages() {
         } else {
             key = std::to_string(msg.SRC) + "_" + std::to_string(msg.ADDR);
         }
-        instruction_stats[key].start_process_time = global_clock;
+        auto &stat = instruction_stats[key];
+        stat.start_process_time = global_clock;
+
 
         handleMessage(msg); //aca procesa el mensaje , deberia de llamar a la clase eventoo. TO TEST
         
@@ -206,34 +205,29 @@ void Interconnect::processMessages() {
         
         //const auto& stat = instruction_stats[response_key];
         if (eventoCount != 0 && bytes != 0) {
-            std::string response_key;
-            if (msg.type == MessageType::READ_RESP || msg.type == MessageType::WRITE_RESP || msg.type == MessageType::INV_COMPLETE) {
-                response_key = std::to_string(msg.DEST) + "_" + std::to_string(msg.ADDR);
-            } else {
-                response_key = std::to_string(msg.SRC) + "_" + std::to_string(msg.ADDR);
-            }
-
-            instruction_stats[response_key].finish_time = global_clock;
-            const auto& stat = instruction_stats[response_key];
+            stat.finish_time = global_clock;
             uint64_t en_cola = (stat.start_process_time >= stat.enqueue_time)
                 ? (stat.start_process_time - stat.enqueue_time)
                 : 0;
+        
+            
+        
 
             log_file << "Instr (PE " << evento_pe_id
-                << " - " << messageTypeToString(evento_tipo_instruccion) << ") "
-                << "Ciclos totales: " << (eventoCount + en_cola) << " ciclos, "
-                << "En cola: " << en_cola << " ciclos, "
-                << "Conteo de ciclos (eventos): " << eventoCount << " ciclos, "
-                << "Bytes: " << bytes << ", "
-                << "Metrica BW: ";
-            
+            << " - " << messageTypeToString(evento_tipo_instruccion) << ") "
+            << "Ciclos totales: " << (eventoCount + en_cola) << " ciclos, "
+            << "En cola: " << en_cola << " ciclos, "
+            << "Conteo de ciclos (eventos): " << eventoCount << " ciclos, "
+            << "Bytes: " << bytes << ", "
+            << "Metrica BW: ";
+        
             if ((eventoCount + en_cola) > 0) {
                 log_file << (bytes / (eventoCount + en_cola));
             } else {
                 log_file << "N/A";
             }
             log_file << "\n";
-
+        
             total_bytes_programa += bytes;
             total_ciclos_programa += (eventoCount + en_cola);
 
@@ -280,24 +274,60 @@ void Interconnect::handleMessage(const Message& msg) {
         case MessageType::WRITE_MEM: {
             std::cout << "[IC] WRITE_MEM from PE" << msg.SRC
                       << " at address " << msg.ADDR << "\n";
-            
-            uint32_t status = 0x0;
+            // Validaciones para WRITE_MEM
+            if (msg.ADDR % 4 != 0) {
+                std::cerr << " -> ERROR: Dirección " << msg.ADDR << " no está alineada a 4 bytes.\n";
+                break;
+            }
 
-            if (memory) {
-                try {
-                    memory->writeBlock(msg.ADDR, msg.DATA);
-                    std::cout << " -> Datos escritos (" << msg.DATA.size() << " bytes): ";
-                    for (uint8_t byte : msg.DATA) {
-                        std::cout << std::hex << static_cast<int>(byte) << " ";
-                    }
-                    std::cout << std::dec << "\n";
+            if (msg.ADDR + msg.DATA.size() > 4096) {
+                std::cerr << " -> ERROR: La escritura excede el límite de memoria (4096 bytes).\n";
+                break;
+            }
 
-                    status = 0x1; // Indica éxito
-                } catch (const std::out_of_range& e) {
-                    std::cerr << " -> Error: " << e.what() << "\n";
-                }
-            } else {
+            if (msg.DATA.empty()) {
+                std::cerr << " -> ERROR: No se especificaron datos para escribir (DATA vacío).\n";
+                break;
+            }
+            if (msg.DATA.size() > 2048) {  // Límite práctico: tamaño máximo de escritura aceptable
+                std::cerr << " -> ADVERTENCIA: La escritura excede tamaño máximo recomendado (2048 bytes).\n";
+            }
+
+            if (!memory) {
                 std::cerr << " -> Memoria no conectada.\n";
+                break;
+            }
+
+            //3 eventoos, 11 bytes 3 lectura de instruc y uno por cada linea de cache. 
+            //2 eventoos de lectura
+            evento *evento1 = new evento("lectura", msg.SRC,4,msg.type);
+            evento *evento2 = new evento("lectura", msg.SRC,4,msg.type);
+            evento *evento3 = new evento("lectura", msg.SRC,4,msg.type);
+            this->eventoq->addevento(evento1);
+            this->eventoq->addevento(evento2);
+            this->eventoq->addevento(evento3);
+            //eventoos de lectura/escritura
+            std::size_t byte_count = msg.DATA.size();
+            std::size_t num_eventos = (byte_count + 15) / 16;  // cada 16 bytes generan 1 evento
+
+            for (std::size_t i = 0; i < num_eventos; ++i) {
+                evento *lcevento = new evento("Memoria", msg.SRC, 16, msg.type);
+                this->eventoq->addevento(lcevento);
+            }
+
+
+            uint32_t status = 0x0;
+            try {
+                memory->writeBlock(msg.ADDR, msg.DATA);
+                std::cout << " -> Datos escritos (" << msg.DATA.size() << " bytes): ";
+                for (uint8_t byte : msg.DATA) {
+                    std::cout << std::hex << static_cast<int>(byte) << " ";
+                }
+                std::cout << std::dec << "\n";
+
+                status = 0x1; // Indica éxito
+            } catch (const std::out_of_range& e) {
+                std::cerr << " -> Error: " << e.what() << "\n";
             }
             // Enviar WRITE_RESP al PE origen
             Message response = {
@@ -311,20 +341,8 @@ void Interconnect::handleMessage(const Message& msg) {
                 0, 0,
                 msg.QoS
             };
-            //3 eventoos, 11 bytes 3 lectura de instruc y uno por cada linea de cache. 
-            //2 eventoos de lectura
-            evento *evento1 = new evento("lectura", msg.SRC,4,msg.type);
-            evento *evento2 = new evento("lectura", msg.SRC,4,msg.type);
-            evento *evento3 = new evento("lectura", msg.SRC,4,msg.type);
-            this->eventoq->addevento(evento1);
-            this->eventoq->addevento(evento2);
-            this->eventoq->addevento(evento3);
-            //eventoos de lectura/escritura
-            for(int i=0;i<msg.NUM_OF_CACHE_LINES;i++){//hay que verificar que contiene numofcachelines
-                evento *lcevento = new evento("Memoria", msg.SRC,16,msg.type);
-                this->eventoq->addevento(lcevento); //añadimos N eventoos por cantidad de lineas de cache.
-            }
-            //enqueueMessage(response);
+            
+            enqueueMessage(response);
             break;
         }
 
@@ -373,7 +391,7 @@ void Interconnect::handleMessage(const Message& msg) {
                     0, 0,
                     msg.QoS
                 };
-                //enqueueMessage(response); 
+                enqueueMessage(response); 
                 //2 eventoos de lectura
                 evento *evento1 = new evento("lectura", msg.SRC,4, msg.type);
                 evento *evento2 = new evento("lectura", msg.SRC,4, msg.type);
@@ -443,6 +461,22 @@ void Interconnect::handleMessage(const Message& msg) {
                 this->eventoq->addevento(evento_lectura);
                 evento* evento_execute = new evento("execute", msg.DEST, 4, msg.type);
                 this->eventoq->addevento(evento_execute);
+
+                // ✅ Ahora usamos el tamaño real del vector de datos
+                int byte_count = msg.DATA.size();
+                if (byte_count == 0) byte_count = 1;  // Por seguridad
+
+                int num_eventos = (byte_count + 15) / 16;  // Cada 16 bytes suma un evento
+                if (num_eventos == 0) num_eventos = 1;     // Mínimo 1 evento
+
+                std::cout << "[IC] (wr) Generando " << num_eventos 
+                        << " eventoss de ejecucion para bloque de " 
+                        << byte_count << " bytes\n";
+
+                for (int i = 0; i < num_eventos; ++i) {
+                    evento* evento_exec = new evento("execute", msg.DEST, 4, msg.type);
+                    this->eventoq->addevento(evento_exec);
+                }
 
 
             } else {

@@ -20,29 +20,48 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
         while (std::getline(infile, line)) {
             std::istringstream iss(line);
             std::string opcode;
-            uint32_t addr, data_or_size;
+            uint32_t addr;
+            uint32_t data;  // ahora llamamos esto 'data' para más claridad
             int qos;
-    
-            iss >> opcode >> std::hex >> addr >> data_or_size >> qos;
+            int size = 0;
+        
+            // LEEMOS: opcode, dirección, dato, qos, [opcional: tamaño]
+            iss >> opcode >> std::hex >> addr >> data >> qos;
+        
             if (opcode == "WRITE_MEM") {
+                // Opcionalmente leemos el tamaño (por ejemplo: WRITE_MEM addr data qos size)
+                if (!(iss >> std::hex >> size)) {
+                    size = 4;  // Por defecto 4 bytes si no se da tamaño
+                }
+        
+                // Armamos el patrón base de 4 bytes
+                std::vector<uint8_t> pattern = {
+                    static_cast<uint8_t>(data & 0xFF),
+                    static_cast<uint8_t>((data >> 8) & 0xFF),
+                    static_cast<uint8_t>((data >> 16) & 0xFF),
+                    static_cast<uint8_t>((data >> 24) & 0xFF)
+                };
+        
+                // Rellenamos el vector final
+                std::vector<uint8_t> data_vector;
+                for (int i = 0; i < size; ++i) {
+                    data_vector.push_back(pattern[i % 4]);
+                }
+        
                 Message msg = {
-                    MessageType::WRITE_MEM,  // [0] Tipo de mensaje: escritura
-                    pe_id,                   // [1] SRC: ID del PE que está enviando el mensaje
-                    -1,                      // [2] DEST: no se usa en WRITE_MEM (por eso -1)
-                    addr,                   // [3] ADDR: dirección de memoria a escribir
-                    0,                      // [4] SIZE: no se usa en escritura (solo en lectura)
-                    0,                      // [5] CACHE_LINE: no se usa aquí
-                    std::vector<uint8_t>{ 
-                        static_cast<uint8_t>(data_or_size & 0xFF),
-                        static_cast<uint8_t>((data_or_size >> 8) & 0xFF),
-                        static_cast<uint8_t>((data_or_size >> 16) & 0xFF),
-                        static_cast<uint8_t>((data_or_size >> 24) & 0xFF)
-                    },           // [6] DATA: dato que se quiere escribir
-                    1,                      // [7] NUM_OF_CACHE_LINES: valor fijo, por convención
-                    0,                      // [8] START_CACHE_LINE: no usado, se deja 0
-                    qos                     // [9] QoS: prioridad del mensaje
+                    MessageType::WRITE_MEM,
+                    pe_id,
+                    -1,
+                    addr,
+                    size,
+                    0,
+                    data_vector,
+                    0, 0,
+                    qos
                 };
                 interconnect->enqueueMessage(msg);
+            }
+            
                 //peso del mensaje en bytes
                 //tipo de mensaje = 3 bits, por alineacion , 1 BYTE
                 //id del pe = 3 , por alineacion 1 BYTE
@@ -63,20 +82,19 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
                 //por ejemplo deberia de poder decirle empieze en la linea 4 de cache y lea
                 //desde la x hasta la x , puede leer unicamente de 4 en 4 bytes, entonces el
                 //inicio deberia de ser un multiplo de 4 en la linea de cache
-            }
-            else if (opcode == "READ_MEM") {
-                Message msg = {
-                    MessageType::READ_MEM,     // [0]
-                    pe_id,                     // [1]
-                    -1,                        // [2]
-                    addr,                      // [3]
-                    static_cast<int>(data_or_size),  // [4] SIZE: cuántos bytes leer
-                    0,                         // [5]
-                    std::vector<uint8_t>{},    // [6] DATA: sin uso
-                    0, 0,                      // [7,8]
-                    qos                        // [9]
-                };
-                interconnect->enqueueMessage(msg);
+                else if (opcode == "READ_MEM") {
+                    Message msg = {
+                        MessageType::READ_MEM,
+                        pe_id,
+                        -1,
+                        addr,
+                        static_cast<int>(data),  // aquí 'data' es SIZE para READ_MEM
+                        0,
+                        std::vector<uint8_t>{},
+                        0, 0,
+                        qos
+                    };
+                    interconnect->enqueueMessage(msg);
                 //peso del mensaje en bytes
                 //tipo de mensaje = 3 bits, por alineacion , 1 BYTE
                 //id del pe = 3 , por alineacion 1 BYTE
@@ -93,16 +111,12 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
                     MessageType::BROADCAST_INVALIDATE,
                     pe_id, -1,
                     0, 0,
-                    static_cast<int>(addr), // aquí addr se interpreta como línea
+                    static_cast<int>(addr), // aquí addr es la línea de cache
                     std::vector<uint8_t>{}, 0, 0, qos
                 };
                 interconnect->enqueueMessage(msg);
-                //desgloce del mensaje
-                //1 byte para el tipo de mensaje
-                //1 byte para el peid
-                // 1 byte de la linea de cache a invalidar.
             }
-
+        
             else {
                 std::cerr << "[PE " << int(pe_id) << "] Instrucción desconocida: " << opcode << "\n";
             }
