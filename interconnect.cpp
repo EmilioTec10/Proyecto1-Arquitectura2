@@ -59,10 +59,23 @@ void Interconnect::requestStop() {
 void Interconnect::enqueueMessage(const Message& msg) {
     std::lock_guard<std::mutex> lock(queue_mutex);
 
-    std::string key = std::to_string(msg.SRC) + "_" + std::to_string(msg.ADDR);
-    instruction_stats[key].enqueue_time = global_clock;
-    instruction_stats[key].bytes = (msg.type == MessageType::WRITE_MEM) ? 3 : msg.SIZE;
 
+    
+    std::string key;
+    if (msg.type == MessageType::READ_RESP || msg.type == MessageType::WRITE_RESP || msg.type == MessageType::INV_COMPLETE) {
+        // Las respuestas usan DEST como clave (el PE original que hizo la petición)
+        key = std::to_string(msg.DEST) + "_" + std::to_string(msg.ADDR);
+    } else {
+        // Las instrucciones originales usan SRC como clave
+        key = std::to_string(msg.SRC) + "_" + std::to_string(msg.ADDR);
+    }
+
+    auto &stat = instruction_stats[key];
+
+    instruction_stats[key].enqueue_time = global_clock;
+    //instruction_stats[key].bytes = (msg.type == MessageType::WRITE_MEM) ? 3 : msg.SIZE;
+
+    // Encolar mensaje en la cola correspondiente
     if (useQoS) {
         qos_queue.emplace(msg.QoS, msg);
     } else {
@@ -70,6 +83,7 @@ void Interconnect::enqueueMessage(const Message& msg) {
     }
     queue_cv.notify_one();
 }
+
 //se hace pop a la cola del mensaje
 Message Interconnect::getNextMessage() {
     std::unique_lock<std::mutex> lock(queue_mutex);
@@ -129,12 +143,22 @@ void Interconnect::processMessages() {
         }
 
         // Clave única para esta instrucción
-        std::string key = std::to_string(msg.SRC) + "_" + std::to_string(msg.ADDR);
+        //std::string response_key;
+        //if (msg.type == MessageType::READ_RESP || msg.type == MessageType::WRITE_RESP || msg.type == MessageType::INV_COMPLETE) {
+           // response_key = std::to_string(msg.DEST) + "_" + std::to_string(msg.ADDR);
+        //} else {
+         //   response_key = std::to_string(msg.SRC) + "_" + std::to_string(msg.ADDR);
+        //}
 
         // Registrar tiempo de entrada a procesamiento
+        std::string key;
+        if (msg.type == MessageType::READ_RESP || msg.type == MessageType::WRITE_RESP || msg.type == MessageType::INV_COMPLETE) {
+            key = std::to_string(msg.DEST) + "_" + std::to_string(msg.ADDR);
+        } else {
+            key = std::to_string(msg.SRC) + "_" + std::to_string(msg.ADDR);
+        }
         instruction_stats[key].start_process_time = global_clock;
 
-        // Procesar mensaje y avanzar el reloj lógico
         handleMessage(msg); //aca procesa el mensaje , deberia de llamar a la clase eventoo. TO TEST
         
         global_clock++;
@@ -155,6 +179,7 @@ void Interconnect::processMessages() {
             evento_pe_id= mi_evento->getpe_id();
             bytes+= mi_evento->getBytes();
             evento_tipo_instruccion = mi_evento->getTipoInstruccion();
+            eventoCount = 1;  
             delete mi_evento;
             while (flag !=1) {
                 if (eventoq->getHead() != nullptr){
@@ -180,17 +205,20 @@ void Interconnect::processMessages() {
 
         
         //const auto& stat = instruction_stats[response_key];
-        if (eventoCount!=0 && bytes !=0){
-            uint64_t en_cola = 0;
-            if (msg.type == MessageType::WRITE_RESP || msg.type == MessageType::READ_RESP) {
-                // Usamos el DEST porque el PE que recibe es el que inició la instrucción
-                std::string response_key = std::to_string(msg.DEST) + "_" + std::to_string(msg.ADDR);
-                instruction_stats[response_key].finish_time = global_clock;
-                const auto& stat = instruction_stats[response_key];
-                en_cola = stat.start_process_time - stat.enqueue_time;
-                //log_file << "Instr (" << response_key << ") En cola: "
-                  //      << en_cola << " ciclos\n";
+        if (eventoCount != 0 && bytes != 0) {
+            std::string response_key;
+            if (msg.type == MessageType::READ_RESP || msg.type == MessageType::WRITE_RESP || msg.type == MessageType::INV_COMPLETE) {
+                response_key = std::to_string(msg.DEST) + "_" + std::to_string(msg.ADDR);
+            } else {
+                response_key = std::to_string(msg.SRC) + "_" + std::to_string(msg.ADDR);
             }
+
+            instruction_stats[response_key].finish_time = global_clock;
+            const auto& stat = instruction_stats[response_key];
+            uint64_t en_cola = (stat.start_process_time >= stat.enqueue_time)
+                ? (stat.start_process_time - stat.enqueue_time)
+                : 0;
+
             log_file << "Instr (PE " << evento_pe_id
                 << " - " << messageTypeToString(evento_tipo_instruccion) << ") "
                 << "Ciclos totales: " << (eventoCount + en_cola) << " ciclos, "
@@ -296,7 +324,7 @@ void Interconnect::handleMessage(const Message& msg) {
                 evento *lcevento = new evento("Memoria", msg.SRC,16,msg.type);
                 this->eventoq->addevento(lcevento); //añadimos N eventoos por cantidad de lineas de cache.
             }
-            enqueueMessage(response);
+            //enqueueMessage(response);
             break;
         }
 
@@ -345,7 +373,7 @@ void Interconnect::handleMessage(const Message& msg) {
                     0, 0,
                     msg.QoS
                 };
-                enqueueMessage(response); 
+                //enqueueMessage(response); 
                 //2 eventoos de lectura
                 evento *evento1 = new evento("lectura", msg.SRC,4, msg.type);
                 evento *evento2 = new evento("lectura", msg.SRC,4, msg.type);
@@ -539,6 +567,8 @@ void Interconnect::handleMessage(const Message& msg) {
                         tracker.qos
                     };
 
+                    evento *evento_inv = new evento("invalidacion completada", msg.SRC,1, msg.type);
+
                     enqueueMessage(complete);
                     it = invalidation_map.erase(it);
                 } else {
@@ -550,7 +580,14 @@ void Interconnect::handleMessage(const Message& msg) {
                 std::cerr << "[IC] INV_ACK inesperado de PE"
                         << msg.SRC << " (duplicado en todos los trackers)\n";
             }
+
+            evento *evento1 = new evento("lectura", msg.SRC,3, msg.type);
+            evento *evento2 = new evento("excecute", msg.SRC,3, msg.type);
+            this->eventoq->addevento(evento1);
+            this->eventoq->addevento(evento2);
+
             break;
+            
         }
 
 
@@ -560,16 +597,17 @@ void Interconnect::handleMessage(const Message& msg) {
         
             if (pe_map.find(msg.DEST) != pe_map.end()) {
                 // 1 eventoo de lectura de 3bytes 
-            evento* evento_lectura = new evento("lectura", msg.DEST, 4, msg.type);
+            evento* evento_lectura = new evento("lectura", msg.DEST, 3, msg.type);
             this->eventoq->addevento(evento_lectura);
 
             // 1 eventoo de execute de 3bytes
-            evento* evento_execute = new evento("execute", msg.DEST, 4, msg.type);
+            evento* evento_execute = new evento("execute", msg.DEST, 3, msg.type);
             this->eventoq->addevento(evento_execute);
                 pe_map[msg.DEST]->receiveMessage(msg);
             } else {
                 std::cerr << " -> PE " << msg.DEST << " no registrado.\n";
             }
+
         
             break;
         }
