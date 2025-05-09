@@ -7,6 +7,8 @@
 #include "evento.h" //añadido del eventoo
 #include <unordered_map>
 #include <string>
+#include <algorithm>
+
 struct InstructionTiming {
     uint64_t enqueue_time = 0;
     uint64_t start_process_time = 0; //se mete en la cola
@@ -423,26 +425,39 @@ void Interconnect::handleMessage(const Message& msg) {
         }
 
         case MessageType::BROADCAST_INVALIDATE: {
-            std::cout << "[IC] BROADCAST_INVALIDATE from PE" << msg.SRC
-                      << ", line " << msg.CACHE_LINE << "\n";
-        
-            int inv_id = next_inv_id++;
-            int num_targets = 0;
-        
-            for (const auto& [id, pe_ptr] : pe_map) {
-                if (id != msg.SRC) {
-                    pe_ptr->invalidateCacheLine(msg.CACHE_LINE);
-                    ++num_targets;
+            // 1️⃣  Comprobación temprana
+            bool ya_activo = false;
+            for (const auto& kv : invalidation_map) {
+                const auto& t = kv.second;
+                if (t.source_pe == msg.SRC && t.cache_line == msg.CACHE_LINE) {
+                    ya_activo = true;
+                    break;
                 }
             }
-        
+            if (ya_activo) {
+                std::cout << "[IC] (omitido) BROADCAST duplicado de PE"
+                        << msg.SRC << ", línea " << msg.CACHE_LINE << '\n';
+                break;                          // ⬅️  Salir ANTES de tocar a los PEs
+            }
+
+            // 2️⃣  Ahora sí invalidamos y contamos
+            int num_targets = 0;
+            for (const auto& [id, pe_ptr] : pe_map) {
+                if (id == msg.SRC) continue;
+                pe_ptr->invalidateCacheLine(msg.CACHE_LINE);
+                ++num_targets;                        // contamos siempre
+                evento* ev = new evento("lectura_invalida_por_pe",
+                                        msg.SRC, 1, msg.type);
+                eventoq->addevento(ev);
+            }
+
             if (num_targets > 0) {
-                invalidation_map[inv_id] = {
-                    .expected_acks = num_targets,
-                    .received_acks = 0,
-                    .source_pe = msg.SRC,
-                    .qos = msg.QoS
-                };
+                InvalidationTracker tr;
+                tr.expected_acks = num_targets;
+                tr.source_pe     = msg.SRC;
+                tr.qos           = msg.QoS;
+                tr.cache_line    = msg.CACHE_LINE;
+                invalidation_map[next_inv_id++] = std::move(tr);
             }
             //aca es 1 de lectura, y 1 de excecute , con 7 bytes, 1 para cada pe
             //al poner 1 bit en 0, (PEOR ESCENARIO , TODOS TIENEN LA LINEA DE CACHE DEL
@@ -455,8 +470,11 @@ void Interconnect::handleMessage(const Message& msg) {
             break;
         }
 
+        /*
         case MessageType::INV_ACK: {
+
             std::cout << "[IC] INV_ACK recibido de PE" << msg.SRC << "\n";
+            
 
             for (auto& [id, tracker] : invalidation_map) {
                 tracker.received_acks += 1;
@@ -474,7 +492,7 @@ void Interconnect::handleMessage(const Message& msg) {
                         tracker.qos
                     };
 
-                    // 3 bytes, 1 eventoo:  1 de escritura y 1 de execute. 
+                    // 3 bytes, 2 eventoo:  1 de escritura y 1 de execute. 
                     evento *evento1 = new evento("lectura", msg.SRC,3, msg.type);
                     evento *evento2 = new evento("execute", msg.SRC,3, msg.type);
                     this->eventoq->addevento(evento1);
@@ -488,6 +506,53 @@ void Interconnect::handleMessage(const Message& msg) {
 
             break;
         }
+*/
+
+        case MessageType::INV_ACK: {
+            bool contado = false;
+
+            for (auto it = invalidation_map.begin();
+                it != invalidation_map.end() && !contado; /* ++ dentro */) {
+
+                auto &tracker = it->second;
+
+                // ¿PE repetido para ESTE tracker?
+                if (tracker.recvd.count(msg.SRC)) { ++it; continue; }
+
+                tracker.recvd.insert(msg.SRC);            // lo contamos
+                contado = true;
+
+                std::cout << "[IC] INV_ACK recibido de PE"
+                        << msg.SRC << " (INV " << it->first << ")\n";
+
+                if (static_cast<int>(tracker.recvd.size()) >= tracker.expected_acks) {
+                    std::cout << "[IC] Todos los INV_ACK recibidos para INV "
+                            << it->first << "\n";
+
+                    Message complete = {
+                        MessageType::INV_COMPLETE,
+                        -1,                   // ADDR
+                        tracker.source_pe,    // DEST
+                        0, 0, 0,              // DATA, SIZE, CACHE_LINE
+                        {},                   // (si tienes un vector, ponlo aquí);
+                        0, 0,                 // extras
+                        tracker.qos
+                    };
+
+                    enqueueMessage(complete);
+                    it = invalidation_map.erase(it);
+                } else {
+                    ++it;
+                }
+            }
+
+            if (!contado) {
+                std::cerr << "[IC] INV_ACK inesperado de PE"
+                        << msg.SRC << " (duplicado en todos los trackers)\n";
+            }
+            break;
+        }
+
 
         case MessageType::INV_COMPLETE: {
             std::cout << "[IC] INV_COMPLETE to PE" << msg.DEST

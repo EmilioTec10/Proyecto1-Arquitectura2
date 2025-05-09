@@ -15,6 +15,8 @@
 #include <fstream>
 #include "evento.h"
 #include "evento_q.h"
+#include <set>
+#include <unordered_set>   
 class PE;
 class Memory;
 
@@ -48,6 +50,8 @@ struct InvalidationTracker {
     int received_acks = 0;
     int source_pe = -1; // PE que originó el broadcast
     int qos = 0;
+    int cache_line;  
+    std::unordered_set<int> recvd;   // PEs que YA enviaron ACK (evita duplicados) // nuevo: PEs que ya respondieron
 };
 
 
