@@ -1,0 +1,24 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Compilar proyecto",
+            "type": "shell",
+            "command": "g++",
+            "args": [
+                "-Wall", "-Wextra", "-g3",
+                "main.cpp",
+                "Memory.cpp",
+                "Interconnect.cpp",
+                "PE.cpp",
+                "-o", "output/main"
+            ],
+            "group": {
+                "kind": "build",
+                "isDefault": true
+            },
+            "problemMatcher": ["$gcc"]
+        }
+    ]
+}
+

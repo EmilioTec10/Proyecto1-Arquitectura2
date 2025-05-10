@@ -10,9 +10,17 @@
 #include <map>
 #include <atomic>
 #include <iostream>
-
+#include <fstream>
+#include <chrono>
+#include <fstream>
+#include "evento.h"
+#include "evento_q.h"
+#include <set>
+#include <unordered_set>   
 class PE;
 class Memory;
+
+
 
 enum class MessageType {
     WRITE_MEM,
@@ -31,7 +39,7 @@ struct Message {
     uint32_t ADDR;
     int SIZE;
     int CACHE_LINE;
-    uint32_t DATA;
+    std::vector<uint8_t> DATA; 
     int NUM_OF_CACHE_LINES;
     int START_CACHE_LINE;
     int QoS;
@@ -42,10 +50,17 @@ struct InvalidationTracker {
     int received_acks = 0;
     int source_pe = -1; // PE que originó el broadcast
     int qos = 0;
+    int cache_line;  
+    std::unordered_set<int> recvd;   // PEs que YA enviaron ACK (evita duplicados) // nuevo: PEs que ya respondieron
 };
 
-std::map<int, InvalidationTracker> invalidation_map;
-int next_inv_id = 0;
+
+
+extern std::map<int, InvalidationTracker> invalidation_map;
+extern int next_inv_id;
+
+extern std::unordered_map<std::string, std::chrono::steady_clock::time_point> enqueue_times;
+
 
 class Interconnect {
 public:
@@ -60,6 +75,8 @@ public:
 private:
     std::queue<Message> fifo_queue;
     std::atomic<bool> stop_requested;
+    //añadido de la cola de eventoos:
+    evento_q *eventoq = new evento_q(30); //maxima cantidad de eventoos en el bus
 
     struct QoSComparator {
         bool operator()(const std::pair<int, Message>& a, const std::pair<int, Message>& b) {
@@ -81,5 +98,7 @@ private:
     Message getNextMessage();
     void handleMessage(const Message& msg);
 };
+
+std::string messageTypeToString(MessageType type);
 
 #endif

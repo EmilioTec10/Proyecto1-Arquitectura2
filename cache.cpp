@@ -10,6 +10,7 @@ void Cache::write(uint32_t addr, const std::vector<uint8_t>& data) {
     lines[index].valid = true;
     lines[index].tag = addr / CACHE_LINE_SIZE;
 
+
     for (size_t i = 0; i < data.size() && i < CACHE_LINE_SIZE; ++i) {
         lines[index].data[i] = data[i];
     }
