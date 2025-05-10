@@ -7,6 +7,7 @@
 #include "evento.h" //añadido del eventoo
 #include <unordered_map>
 #include <string>
+#include <iomanip>
 #include <algorithm>
 
 struct InstructionTiming {
@@ -244,7 +245,15 @@ void Interconnect::processMessages() {
             << "Metrica BW: ";
         
             if ((eventoCount + en_cola) > 0) {
-                log_file << (bytes / (eventoCount + en_cola));
+                double bw = static_cast<double>(bytes) / static_cast<double>(eventoCount + en_cola);
+            
+                if (bw < 1.0) {
+                    // Mostramos con decimales si es menor a 1
+                    log_file << std::fixed << std::setprecision(3) << bw;
+                } else {
+                    // Mostramos como entero si es 1 o mayor
+                    log_file << static_cast<uint64_t>(bw);
+                }
             } else {
                 log_file << "N/A";
             }
@@ -364,7 +373,7 @@ void Interconnect::handleMessage(const Message& msg) {
             uint32_t status = 0x0;
             try {
                 memory->writeBlock(msg.ADDR, msg.DATA);
-                std::cout << " -> Datos escritos (" << msg.DATA.size() << " lineas cache): ";
+                std::cout << " -> Datos escritos (" << msg.DATA.size() << " bytes): ";
                 for (uint8_t byte : msg.DATA) {
                     std::cout << std::hex << static_cast<int>(byte) << " ";
                 }

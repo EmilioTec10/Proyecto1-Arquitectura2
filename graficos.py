@@ -6,8 +6,8 @@ import plotly.express as px
 with open("message_times.txt", "r") as f:
     lines = f.readlines()
 
-# Regex para extraer los datos
-pattern = r"Instr \(PE (\d+) - ([A-Z_]+)\).*Bytes: (\d+), Metrica BW: (\d+)"
+# Regex para extraer los datos (ahora acepta decimales para BW)
+pattern = r"Instr \(PE (\d+) - ([A-Z_]+)\).*Bytes: (\d+), Metrica BW: ([\d.]+)"
 data = []
 
 for i, line in enumerate(lines):
@@ -16,7 +16,7 @@ for i, line in enumerate(lines):
         pe_id = int(match.group(1))
         instr_type = match.group(2)
         bytes_ = int(match.group(3))
-        bw = int(match.group(4))
+        bw = float(match.group(4))  # 👈 CAMBIO: ahora lee como float
         label = f"#{i:02d} PE{pe_id}-{instr_type}"  # etiqueta única y ordenada
         data.append((label, pe_id, instr_type, bytes_, bw))
 
@@ -58,6 +58,7 @@ fig_bw.update_layout(
 )
 fig_bw.write_html("grafico_bw.html")
 fig_bw.show()
+
 
 
 # === Ciclos vs Bytes (steps.txt) ===

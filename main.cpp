@@ -26,10 +26,8 @@ int main() {
     std::vector<std::thread> pe_threads;
     for (int i = 0; i < NUM_PES; ++i) {
         std::ostringstream filename;
-        //filename << "Instrucciones/pe" << i <<https://prod.liveshare.vsengsaas.visualstudio.com/join?844EBEFA3462EF69B20757541A07656EBB37 ".txt";
-        //filename << "/home/emilio/Documents/Proyecto1-Arquitectura2/Instrucciones/pe" << i << ".txt";
-        filename << "/home/mrr79/Documents/Arqui 2/Proy1/Proyecto1-Arquitectura2/Instrucciones/pe" << i << ".txt";
-    
+
+        filename << "Instrucciones/pe" << i << ".txt";
         pes.push_back(std::make_unique<PE>(i, &ic, filename.str()));
         ic.registerPE(i, pes.back().get());
 

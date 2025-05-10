@@ -1,45 +1,47 @@
+Instr (PE 0 - WRITE_MEM) Ciclos totales: 38 ciclos, En cola: 0 ciclos, Conteo de ciclos (eventos): 38 ciclos, Bytes: 152, Metrica BW: 4
+Instr (PE 0 - WRITE_RESP) Ciclos totales: 9 ciclos, En cola: 6 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 9, Metrica BW: 1
+Instr (PE 0 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
 Instr (PE 2 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
-Instr (PE 0 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
-Instr (PE 5 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
-Instr (PE 2 - READ_RESP) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 4
 Instr (PE 0 - READ_RESP) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 4
-Instr (PE 5 - READ_RESP) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 4
-Instr (PE 7 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
-Instr (PE 6 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
-Instr (PE 7 - READ_RESP) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 4
-Instr (PE 6 - READ_RESP) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 4
 Instr (PE 3 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
+Instr (PE 2 - READ_RESP) Ciclos totales: 6 ciclos, En cola: 4 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 3
+Instr (PE 3 - READ_RESP) Ciclos totales: 4 ciclos, En cola: 2 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 5
 Instr (PE 4 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
-Instr (PE 3 - READ_RESP) Ciclos totales: 6 ciclos, En cola: 4 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 3
-Instr (PE 4 - READ_RESP) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 4
+Instr (PE 4 - READ_RESP) Ciclos totales: 3 ciclos, En cola: 1 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 6
+Instr (PE 5 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
+Instr (PE 6 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
+Instr (PE 5 - READ_RESP) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 4
+Instr (PE 6 - READ_RESP) Ciclos totales: 4 ciclos, En cola: 2 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 5
+Instr (PE 7 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
+Instr (PE 7 - READ_RESP) Ciclos totales: 3 ciclos, En cola: 1 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 6
+Instr (PE 0 - BROADCAST_INVALIDATE) Ciclos totales: 32 ciclos, En cola: 23 ciclos, Conteo de ciclos (eventos): 9 ciclos, Bytes: 12, Metrica BW: 0.375
 Instr (PE 0 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
-Instr (PE 0 - BROADCAST_INVALIDATE) Ciclos totales: 32 ciclos, En cola: 23 ciclos, Conteo de ciclos (eventos): 9 ciclos, Bytes: 12, Metrica BW: 0
 Instr (PE 0 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
-Instr (PE 0 - READ_RESP) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 4
+Instr (PE 0 - READ_RESP) Ciclos totales: 3 ciclos, En cola: 1 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 6
 Instr (PE 0 - READ_RESP) Ciclos totales: 4 ciclos, En cola: 2 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 20, Metrica BW: 5
+Instr (PE 0 - BROADCAST_INVALIDATE) Ciclos totales: 37 ciclos, En cola: 28 ciclos, Conteo de ciclos (eventos): 9 ciclos, Bytes: 12, Metrica BW: 0.324
 Instr (PE 1 - READ_MEM) Ciclos totales: 8 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 10, Metrica BW: 1
-Instr (PE 0 - BROADCAST_INVALIDATE) Ciclos totales: 37 ciclos, En cola: 28 ciclos, Conteo de ciclos (eventos): 9 ciclos, Bytes: 12, Metrica BW: 0
-Instr (PE 1 - READ_RESP) Ciclos totales: 5 ciclos, En cola: 2 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 36, Metrica BW: 7
-Instr (PE 5 - INV_ACK) Ciclos totales: 4 ciclos, En cola: 2 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 1
-Instr (PE 7 - INV_ACK) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 2 - INV_ACK) Ciclos totales: 6 ciclos, En cola: 4 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 1 - INV_ACK) Ciclos totales: 7 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 3 - INV_ACK) Ciclos totales: 8 ciclos, En cola: 6 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 4 - INV_ACK) Ciclos totales: 9 ciclos, En cola: 7 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 5 - INV_ACK) Ciclos totales: 10 ciclos, En cola: 8 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 6 - INV_ACK) Ciclos totales: 11 ciclos, En cola: 9 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
+Instr (PE 1 - READ_RESP) Ciclos totales: 4 ciclos, En cola: 1 ciclos, Conteo de ciclos (eventos): 3 ciclos, Bytes: 36, Metrica BW: 9
+Instr (PE 5 - INV_ACK) Ciclos totales: 5 ciclos, En cola: 3 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.800
+Instr (PE 2 - INV_ACK) Ciclos totales: 6 ciclos, En cola: 4 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.667
+Instr (PE 1 - INV_ACK) Ciclos totales: 7 ciclos, En cola: 5 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.571
+Instr (PE 2 - INV_ACK) Ciclos totales: 8 ciclos, En cola: 6 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.500
+Instr (PE 3 - INV_ACK) Ciclos totales: 9 ciclos, En cola: 7 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.444
+Instr (PE 4 - INV_ACK) Ciclos totales: 10 ciclos, En cola: 8 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.400
+Instr (PE 5 - INV_ACK) Ciclos totales: 11 ciclos, En cola: 9 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.364
+Instr (PE 6 - INV_ACK) Ciclos totales: 12 ciclos, En cola: 10 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.333
+Instr (PE 7 - INV_ACK) Ciclos totales: 13 ciclos, En cola: 11 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.308
 Instr (PE 0 - INV_COMPLETE) Ciclos totales: 3 ciclos, En cola: 1 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 1
-Instr (PE 7 - INV_ACK) Ciclos totales: 13 ciclos, En cola: 11 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 4 - INV_ACK) Ciclos totales: 14 ciclos, En cola: 12 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 6 - INV_ACK) Ciclos totales: 15 ciclos, En cola: 13 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 3 - INV_ACK) Ciclos totales: 16 ciclos, En cola: 14 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 1 - INV_ACK) Ciclos totales: 17 ciclos, En cola: 15 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
-Instr (PE 2 - INV_ACK) Ciclos totales: 18 ciclos, En cola: 16 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0
+Instr (PE 6 - INV_ACK) Ciclos totales: 15 ciclos, En cola: 13 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.267
+Instr (PE 4 - INV_ACK) Ciclos totales: 16 ciclos, En cola: 14 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.250
+Instr (PE 1 - INV_ACK) Ciclos totales: 17 ciclos, En cola: 15 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.235
+Instr (PE 7 - INV_ACK) Ciclos totales: 18 ciclos, En cola: 16 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.222
+Instr (PE 3 - INV_ACK) Ciclos totales: 19 ciclos, En cola: 17 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 0.211
 Instr (PE 0 - INV_COMPLETE) Ciclos totales: 3 ciclos, En cola: 1 ciclos, Conteo de ciclos (eventos): 2 ciclos, Bytes: 4, Metrica BW: 1
 
 =============================================
 BW TOTAL DEL PROGRAMA:
-Bytes totales: 808
-Ciclos totales: 716
-BW total: 1.12849
+Bytes totales: 1130
+Ciclos totales: 818
+BW total: 1.381
 =============================================
