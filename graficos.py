@@ -58,3 +58,37 @@ fig_bw.update_layout(
 )
 fig_bw.write_html("grafico_bw.html")
 fig_bw.show()
+
+
+# === Ciclos vs Bytes (steps.txt) ===
+steps_data = []
+steps_pattern = r"Ciclos hasta el momento: (\d+)\s+Bytes: (\d+)"
+
+with open("steps.txt", "r") as f:
+    for line in f:
+        match = re.search(steps_pattern, line)
+        if match:
+            ciclos = int(match.group(1))
+            bytes_ = int(match.group(2))
+            steps_data.append((ciclos, bytes_))
+
+# Crear DataFrame
+df_steps = pd.DataFrame(steps_data, columns=["Ciclos", "Bytes"])
+
+# Graficar usando "Ciclos" en X para que aparezca como tal en el tooltip
+fig_steps = px.line(df_steps,
+                    x="Ciclos",
+                    y="Bytes",
+                    title="Relación Ciclos vs Bytes (steps.txt)",
+                    labels={"Ciclos": "Ciclos", "Bytes": "Bytes"},
+                    template="plotly_dark",
+                    markers=True)
+
+fig_steps.update_layout(
+    title_font_size=24,
+    title_x=0.5,
+    margin=dict(t=80)
+)
+
+fig_steps.write_html("grafico_ciclos_vs_bytes.html")
+fig_steps.show()

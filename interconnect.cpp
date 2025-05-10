@@ -116,6 +116,12 @@ void Interconnect::processMessages() {
         return;
     }
 
+    std::ofstream steps_file("steps.txt", std::ios::trunc);
+    if (!steps_file.is_open()) {
+        std::cerr << "Error al abrir steps.txt\n";
+        return;
+    }
+
     while (true) {
         Message msg;
         {
@@ -205,12 +211,28 @@ void Interconnect::processMessages() {
         //const auto& stat = instruction_stats[response_key];
         if (eventoCount != 0 && bytes != 0) {
             stat.finish_time = global_clock;
-
-            uint64_t en_cola = (stat.start_process_time >= stat.enqueue_time)
-                ? (stat.start_process_time - stat.enqueue_time)
-                : 0;
         
-            
+            uint64_t en_cola = (stat.start_process_time >= stat.enqueue_time)
+            ? (stat.start_process_time - stat.enqueue_time)
+            : 0;
+
+            // Penalizacion por Memoria
+            if (msg.type == MessageType::READ_MEM || msg.type == MessageType::WRITE_RESP) {
+                en_cola += 5;  // No pudimos sumar el tiempo dinamico de la espera. Lo sumamos de esta forma
+                //para simular el efecto de la espera. 
+            }
+        
+            uint64_t ciclos_instr = eventoCount + en_cola;   // ciclos que costó esta instrucción
+            uint64_t bytes_instr  = bytes;                   // bytes que transfirió
+        
+            // 2)  ACTUALIZA los acumulados
+            total_ciclos_programa += ciclos_instr;
+            total_bytes_programa  += bytes_instr;
+        
+            steps_file << "Instr (PE " << evento_pe_id
+            << " - " << messageTypeToString(evento_tipo_instruccion) << ") "
+            << "Ciclos hasta el momento: " << total_ciclos_programa << " "
+            << "Bytes: " << bytes_instr << "\n";
         
 
             log_file << "Instr (PE " << evento_pe_id
@@ -257,6 +279,7 @@ void Interconnect::processMessages() {
 
     std::cout << "[IC] Finalizó procesamiento de mensajes.\n";
     log_file.close();
+    steps_file.close();
 }
 
 
@@ -308,6 +331,11 @@ void Interconnect::handleMessage(const Message& msg) {
                 break;
             }
 
+            if (msg.NUM_OF_CACHE_LINES > 129) {
+                std::cerr << " -> ERROR: Tamaño de NUM_OF_CACHE_LINES invalido.\n";
+                break;
+            }
+
 
 
             if (!memory) {
@@ -328,7 +356,7 @@ void Interconnect::handleMessage(const Message& msg) {
             std::size_t num_eventos = (byte_count + 15) / 16;  // cada 16 bytes generan 1 evento
 
             for (std::size_t i = 0; i < num_eventos; ++i) {
-                evento *lcevento = new evento("Memoria", msg.SRC, 16, msg.type);
+                evento *lcevento = new evento("Memoria", msg.SRC, 4, msg.type);
                 this->eventoq->addevento(lcevento);
             }
 
@@ -452,7 +480,7 @@ void Interconnect::handleMessage(const Message& msg) {
                         << byte_count << " bytes\n";
 
                 for (int i = 0; i < num_eventos; ++i) {
-                    evento* evento_exec = new evento("execute", msg.DEST, 4, msg.type);
+                    evento* evento_exec = new evento("execute", msg.DEST, 16, msg.type);
                     this->eventoq->addevento(evento_exec);
                 }
 
@@ -492,7 +520,7 @@ void Interconnect::handleMessage(const Message& msg) {
                         << byte_count << " bytes\n";
 
                 for (int i = 0; i < num_eventos; ++i) {
-                    evento* evento_exec = new evento("execute", msg.DEST, 4, msg.type);
+                    evento* evento_exec = new evento("execute", msg.DEST, 1, msg.type);
                     this->eventoq->addevento(evento_exec);
                 }
 
@@ -505,6 +533,12 @@ void Interconnect::handleMessage(const Message& msg) {
         }
 
         case MessageType::BROADCAST_INVALIDATE: {
+
+            if (msg.CACHE_LINE > 129) {
+                std::cerr << " -> ERROR (BI): Tamaño de CACHE_LINE invalido.\n";
+                break;
+            }
+
             // 1️⃣  Comprobación temprana
             bool ya_activo = false;
             for (const auto& kv : invalidation_map) {
@@ -543,50 +577,13 @@ void Interconnect::handleMessage(const Message& msg) {
             //al poner 1 bit en 0, (PEOR ESCENARIO , TODOS TIENEN LA LINEA DE CACHE DEL
             //PE QUIEN LA MANDO , CONSULTAR)
             evento *evento1 = new evento("lectura", msg.SRC,4, msg.type);
-            evento *evento2 = new evento("excecute", msg.SRC,7, msg.type);
+            evento *evento2 = new evento("excecute que notifica", msg.SRC,1, msg.type);
             this->eventoq->addevento(evento1);
             this->eventoq->addevento(evento2);
             
             break;
         }
 
-        /*
-        case MessageType::INV_ACK: {
-
-            std::cout << "[IC] INV_ACK recibido de PE" << msg.SRC << "\n";
-            
-
-            for (auto& [id, tracker] : invalidation_map) {
-                tracker.received_acks += 1;
-
-                if (tracker.received_acks >= tracker.expected_acks) {
-                    std::cout << "[IC] Todos los INV_ACK recibidos para INV " << id << "\n";
-
-                    Message complete = {
-                        MessageType::INV_COMPLETE,
-                        -1,
-                        tracker.source_pe, // el PE original del broadcast
-                        0, 0, 0,
-                        std::vector<uint8_t>{},
-                        0, 0,
-                        tracker.qos
-                    };
-
-                    // 3 bytes, 2 eventoo:  1 de escritura y 1 de execute. 
-                    evento *evento1 = new evento("lectura", msg.SRC,3, msg.type);
-                    evento *evento2 = new evento("execute", msg.SRC,3, msg.type);
-                    this->eventoq->addevento(evento1);
-                    this->eventoq->addevento(evento2);
-
-                    enqueueMessage(complete);
-                    invalidation_map.erase(id);
-                    break; 
-                }
-            }
-
-            break;
-        }
-*/
 
         case MessageType::INV_ACK: {
             bool contado = false;
@@ -634,7 +631,7 @@ void Interconnect::handleMessage(const Message& msg) {
             }
 
             evento *evento1 = new evento("lectura", msg.SRC,3, msg.type);
-            evento *evento2 = new evento("excecute", msg.SRC,3, msg.type);
+            evento *evento2 = new evento("excecute", msg.SRC,1, msg.type);
             this->eventoq->addevento(evento1);
             this->eventoq->addevento(evento2);
 
@@ -653,7 +650,7 @@ void Interconnect::handleMessage(const Message& msg) {
             this->eventoq->addevento(evento_lectura);
 
             // 1 eventoo de execute de 3bytes
-            evento* evento_execute = new evento("execute", msg.DEST, 3, msg.type);
+            evento* evento_execute = new evento("execute", msg.DEST, 1, msg.type);
             this->eventoq->addevento(evento_execute);
                 pe_map[msg.DEST]->receiveMessage(msg);
             } else {
