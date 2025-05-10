@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import ttk, messagebox
 import os
 import subprocess
+
 #cosas para stepping
 import ctypes
 
@@ -12,6 +13,7 @@ import threading
 CARPETA_INSTRUCCIONES = "Instrucciones"
 NUM_PES = 8
 BACKEND_EXECUTABLE = "./output/main"  # Ajustar si cambia
+
 
 class EditorWindow(tk.Toplevel):
     def __init__(self, master):
@@ -69,6 +71,7 @@ class MainWindow:
         tk.Button(root, text="🚀 Ejecutar simulación", width=25, command=self.ejecutar_simulacion).pack(pady=10)
         tk.Button(root, text="🛠️ Editar instrucciones de los PEs", width=25, command=self.abrir_editor).pack(pady=10)
         tk.Button(root, text="🔄 Stepping", width=25, command=self.do_step).pack(pady=10)
+        
     def ejecutar_simulacion(self):
         if not os.path.exists(BACKEND_EXECUTABLE):
             messagebox.showerror("Error", f"No se encuentra el ejecutable:\n{BACKEND_EXECUTABLE}")
@@ -144,3 +147,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = MainWindow(root)
     root.mainloop()
+
