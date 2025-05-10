@@ -27,7 +27,7 @@ int main() {
     for (int i = 0; i < NUM_PES; ++i) {
         std::ostringstream filename;
 
-        filename << "Instrucciones/pe" << i << ".txt";
+        filename << "QOS2/pe" << i << ".txt";
         pes.push_back(std::make_unique<PE>(i, &ic, filename.str()));
         ic.registerPE(i, pes.back().get());
 
