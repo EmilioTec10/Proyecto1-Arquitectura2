@@ -5,6 +5,7 @@
 #include <sstream>
 #include <iomanip>
 
+int line_size = 16;
 
 PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
     : pe_id(id), interconnect(ic), instruction_file(instrFile) {}
@@ -29,38 +30,46 @@ PE::PE(uint8_t id, Interconnect* ic, const std::string& instrFile)
             iss >> opcode >> std::hex >> addr >> data >> qos;
         
             if (opcode == "WRITE_MEM") {
-                // Opcionalmente leemos el tamaño (por ejemplo: WRITE_MEM addr data qos size)
-                if (!(iss >> std::hex >> size)) {
-                    size = 4;  // Por defecto 4 bytes si no se da tamaño
+                int num_lines = 0;
+
+                // En este caso: data = patrón base, size = número de líneas de caché
+                if (!(iss >> std::dec >> num_lines)) {
+                    num_lines = 1;  // Por defecto, escribir una línea
                 }
-        
-                // Armamos el patrón base de 4 bytes
+
+                constexpr int CACHE_LINE_SIZE = 16; // asegúrate de que este valor coincida con tu sistema
+                int total_bytes = num_lines * CACHE_LINE_SIZE;
+
+                // Crear patrón de 4 bytes a partir del uint32_t 'data'
                 std::vector<uint8_t> pattern = {
                     static_cast<uint8_t>(data & 0xFF),
                     static_cast<uint8_t>((data >> 8) & 0xFF),
                     static_cast<uint8_t>((data >> 16) & 0xFF),
                     static_cast<uint8_t>((data >> 24) & 0xFF)
                 };
-        
-                // Rellenamos el vector final
+
+                // Rellenar el buffer con el patrón
                 std::vector<uint8_t> data_vector;
-                for (int i = 0; i < size; ++i) {
+                for (int i = 0; i < total_bytes; ++i) {
                     data_vector.push_back(pattern[i % 4]);
                 }
-        
+
                 Message msg = {
                     MessageType::WRITE_MEM,
                     pe_id,
                     -1,
                     addr,
-                    size,
-                    0,
+                    total_bytes,   // ← tamaño real en bytes
+                    0,             // CACHE_LINE no usado aquí directamente
                     data_vector,
-                    0, 0,
+                    num_lines,     // ← número de líneas de caché
+                    0,
                     qos
                 };
+
                 interconnect->enqueueMessage(msg);
             }
+
             
                 //peso del mensaje en bytes
                 //tipo de mensaje = 3 bits, por alineacion , 1 BYTE

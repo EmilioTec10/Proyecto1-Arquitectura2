@@ -157,7 +157,6 @@ void Interconnect::processMessages() {
         auto &stat = instruction_stats[key];
         stat.start_process_time = global_clock;
 
-
         handleMessage(msg); //aca procesa el mensaje , deberia de llamar a la clase eventoo. TO TEST
         
         global_clock++;
@@ -206,6 +205,7 @@ void Interconnect::processMessages() {
         //const auto& stat = instruction_stats[response_key];
         if (eventoCount != 0 && bytes != 0) {
             stat.finish_time = global_clock;
+
             uint64_t en_cola = (stat.start_process_time >= stat.enqueue_time)
                 ? (stat.start_process_time - stat.enqueue_time)
                 : 0;
@@ -280,6 +280,11 @@ void Interconnect::handleMessage(const Message& msg) {
                 break;
             }
 
+            if (msg.ADDR % 16 != 0) {
+            std::cerr << " -> ERROR: Dirección " << msg.ADDR << " no está alineada a una línea de caché ("
+                    << 16 << " bytes).\n";
+            break;
+}
             if (msg.ADDR + msg.DATA.size() > 4096) {
                 std::cerr << " -> ERROR: La escritura excede el límite de memoria (4096 bytes).\n";
                 break;
@@ -292,6 +297,18 @@ void Interconnect::handleMessage(const Message& msg) {
             if (msg.DATA.size() > 2048) {  // Límite práctico: tamaño máximo de escritura aceptable
                 std::cerr << " -> ADVERTENCIA: La escritura excede tamaño máximo recomendado (2048 bytes).\n";
             }
+
+            if (msg.ADDR + msg.DATA.size() > 4096) {
+                std::cerr << " -> ERROR: Escritura excede el límite de memoria.\n";
+                break;
+            }
+
+            if (msg.NUM_OF_CACHE_LINES * CACHE_LINE_SIZE != msg.DATA.size()) {
+                std::cerr << " -> ERROR: Tamaño de DATA no coincide con número de líneas especificadas.\n";
+                break;
+            }
+
+
 
             if (!memory) {
                 std::cerr << " -> Memoria no conectada.\n";
@@ -319,7 +336,7 @@ void Interconnect::handleMessage(const Message& msg) {
             uint32_t status = 0x0;
             try {
                 memory->writeBlock(msg.ADDR, msg.DATA);
-                std::cout << " -> Datos escritos (" << msg.DATA.size() << " bytes): ";
+                std::cout << " -> Datos escritos (" << msg.DATA.size() << " lineas cache): ";
                 for (uint8_t byte : msg.DATA) {
                     std::cout << std::hex << static_cast<int>(byte) << " ";
                 }
@@ -329,6 +346,7 @@ void Interconnect::handleMessage(const Message& msg) {
             } catch (const std::out_of_range& e) {
                 std::cerr << " -> Error: " << e.what() << "\n";
             }
+
             // Enviar WRITE_RESP al PE origen
             Message response = {
                 MessageType::WRITE_RESP,
