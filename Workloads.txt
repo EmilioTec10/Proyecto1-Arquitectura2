@@ -1,0 +1,5 @@
+Worksloads set 1: Valores mas randomizados para el Qos
+Worksloads set 2: Valores mas realistas 
+# - BROADCAST_INVALIDATE → alta prioridad (QoS entre 40 y 50)
+# - WRITE_MEM → media (20–35)
+# - READ_MEM → baja (1–15)
